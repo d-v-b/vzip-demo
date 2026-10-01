@@ -1,6 +1,6 @@
 "use strict";
 (() => {
-  // web/src/deflate.ts
+  // src/deflate.ts
   var CRC_TABLE = (() => {
     const t = new Uint32Array(256);
     for (let n = 0; n < 256; n++) {
@@ -28,7 +28,7 @@
     return transform(data, new DecompressionStream("deflate-raw"));
   }
 
-  // web/src/uri.ts
+  // src/uri.ts
   var PCT = "%[0-9A-Fa-f]{2}";
   var UNRESERVED = "A-Za-z0-9\\-._~";
   var SUB_DELIMS = "!$&'()*+,;=";
@@ -202,7 +202,7 @@
     return `${DAYS[date.getUTCDay()]}, ${pad(date.getUTCDate())} ${MONTHS[date.getUTCMonth()]} ${pad(year, 4)} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}:${pad(date.getUTCSeconds())} GMT`;
   }
 
-  // web/src/http.ts
+  // src/http.ts
   var HttpResolutionError = class extends Error {
   };
   function single(headers, name) {
@@ -315,7 +315,7 @@
     };
   }
 
-  // web/src/protobuf.ts
+  // src/protobuf.ts
   var MalformedError = class extends Error {
   };
   var U64_MAX = (1n << 64n) - 1n;
@@ -553,7 +553,7 @@
     return sources;
   }
 
-  // web/src/writer.ts
+  // src/writer.ts
   var InvalidInputError = class extends Error {
   };
   var SOURCES_KEY = "__vz__/sources";
@@ -802,7 +802,7 @@
     return out.concat();
   }
 
-  // web/src/archive.ts
+  // src/archive.ts
   var VzipError = class extends Error {
     errorClass;
     constructor(errorClass, message) {
@@ -1104,7 +1104,7 @@
     return x.length - y.length;
   }
 
-  // web/src/tiff.ts
+  // src/tiff.ts
   var TiffError = class extends Error {
   };
   var Tag = {
@@ -1322,7 +1322,7 @@
     return v;
   }
 
-  // web/src/virtualize.ts
+  // src/virtualize.ts
   var JPEG2000 = /* @__PURE__ */ new Set([33003, 33004, 33005, 34712]);
   function decodeXml(s) {
     return s.replace(/&(?:#x([0-9a-fA-F]+)|#(\d+)|(amp|lt|gt|quot|apos));/g, (_, hex, dec, named) => hex ? String.fromCodePoint(parseInt(hex, 16)) : dec ? String.fromCodePoint(Number(dec)) : { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" }[named]);
@@ -1616,7 +1616,7 @@
     };
   }
 
-  // web/src/server.ts
+  // src/server.ts
   var ARCHIVE_KEY = "__vz__/archive.vzip";
   function decodeId(id) {
     if (!/^[A-Za-z0-9_-]+$/.test(id)) throw new Error(`invalid id ${id}`);
@@ -1743,7 +1743,7 @@
     };
   }
 
-  // web/src/sw.ts
+  // src/sw.ts
   var prefix = new URL("vz/", self.registration.scope).href;
   var handle = makeHandler({ prefix });
   self.addEventListener("install", (event) => event.waitUntil(self.skipWaiting()));

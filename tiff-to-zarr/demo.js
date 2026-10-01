@@ -1,4 +1,4 @@
-// web/src/deflate.ts
+// src/deflate.ts
 var CRC_TABLE = (() => {
   const t = new Uint32Array(256);
   for (let n = 0; n < 256; n++) {
@@ -9,7 +9,7 @@ var CRC_TABLE = (() => {
   return t;
 })();
 
-// web/src/uri.ts
+// src/uri.ts
 var PCT = "%[0-9A-Fa-f]{2}";
 var UNRESERVED = "A-Za-z0-9\\-._~";
 var SUB_DELIMS = "!$&'()*+,;=";
@@ -20,19 +20,19 @@ var AUTHORITY = new RegExp(
 var PATH = new RegExp(`^(?:${PCHAR}|/)*$`);
 var QUERY = new RegExp(`^(?:${PCHAR}|[/?])*$`);
 
-// web/src/protobuf.ts
+// src/protobuf.ts
 var U64_MAX = (1n << 64n) - 1n;
 var utf8 = new TextEncoder();
 var strictUtf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
-// web/src/writer.ts
+// src/writer.ts
 var U64_MAX2 = (1n << 64n) - 1n;
 var utf82 = new TextEncoder();
 
-// web/src/archive.ts
+// src/archive.ts
 var strictUtf82 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
-// web/src/tiff.ts
+// src/tiff.ts
 var Tag = {
   NewSubfileType: 254,
   ImageWidth: 256,
@@ -52,7 +52,7 @@ var Tag = {
 };
 var WANTED = new Set(Object.values(Tag));
 
-// web/src/server.ts
+// src/server.ts
 var ARCHIVE_KEY = "__vz__/archive.vzip";
 function encodeId(url) {
   let s = "";
@@ -60,7 +60,7 @@ function encodeId(url) {
   return btoa(s).replaceAll("+", "-").replaceAll("/", "_").replace(/=+$/, "");
 }
 
-// web/src/client.ts
+// src/client.ts
 async function registerVzipWorker(scriptUrl = "vzip-sw.js") {
   const registration = await navigator.serviceWorker.register(scriptUrl);
   await navigator.serviceWorker.ready;
@@ -81,7 +81,7 @@ function archiveDownloadUrl(zarrUrl) {
   return zarrUrl + ARCHIVE_KEY;
 }
 
-// web/demo/demo.ts
+// demo/demo.ts
 var EXAMPLE = "https://ftp.ebi.ac.uk/pub/databases/IDR/idr0096-tratwal-marrowquant/20210609-ftp-ome-tiffs/4000_d11_m5_LT_2%20(20x_01).ome.tiff";
 var $ = (id) => document.getElementById(id);
 var input = $("url");
