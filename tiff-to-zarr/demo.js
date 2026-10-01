@@ -54,6 +54,7 @@ var WANTED = new Set(Object.values(Tag));
 
 // src/server.ts
 var ARCHIVE_KEY = "__vz__/archive.vzip";
+var WORKER_HEADER = "X-Vzip-Worker";
 function encodeId(url) {
   let s = "";
   for (const b of new TextEncoder().encode(url)) s += String.fromCharCode(b);
@@ -61,13 +62,30 @@ function encodeId(url) {
 }
 
 // src/client.ts
-async function registerVzipWorker(scriptUrl = "vzip-sw.js") {
-  const registration = await navigator.serviceWorker.register(scriptUrl);
-  await navigator.serviceWorker.ready;
-  if (navigator.serviceWorker.controller === null) {
-    await new Promise(
-      (resolve) => navigator.serviceWorker.addEventListener("controllerchange", resolve, { once: true })
-    );
+async function registerVzipWorker(scriptUrl = "vzip-sw.js", timeoutMs = 1e4) {
+  const script = new URL(scriptUrl, location.href).href;
+  const registration = await navigator.serviceWorker.register(script);
+  const container = navigator.serviceWorker;
+  const ours = () => container.controller?.scriptURL === script;
+  if (!ours()) {
+    await new Promise((resolve, reject) => {
+      const finish = (error) => {
+        clearTimeout(timer);
+        container.removeEventListener("controllerchange", check);
+        if (error) reject(error);
+        else resolve();
+      };
+      const check = () => {
+        if (ours()) finish();
+      };
+      const timer = setTimeout(
+        () => finish(new Error("the vzip service worker did not take control of this page; reload it and try again")),
+        timeoutMs
+      );
+      container.addEventListener("controllerchange", check);
+      container.ready.then((r) => r.active?.postMessage("claim"));
+      check();
+    });
   }
   return new URL("vz/", registration.scope).href;
 }
@@ -92,6 +110,11 @@ var setStatus = (text, error = false) => {
 };
 async function getJson(url) {
   const r = await fetch(url);
+  if (r.headers.get(WORKER_HEADER) === null) {
+    throw new Error(
+      `the vzip service worker did not answer this request (HTTP ${r.status} from the network); reload the page and try again`
+    );
+  }
   if (!r.ok) throw new Error(`${r.status}: ${await r.text()}`);
   return r.json();
 }
@@ -138,6 +161,9 @@ function neuroglancerState(zarrUrl, axes, scale, shape, dtype) {
 var prefix;
 async function virtualize(url) {
   $("result").hidden = true;
+  const here = new URL(location.href);
+  here.searchParams.set("url", url);
+  history.replaceState(null, "", here);
   setStatus("Starting the service worker\u2026");
   prefix ??= registerVzipWorker(new URL("vzip-sw.js", location.href));
   const p = await prefix;

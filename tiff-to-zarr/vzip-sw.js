@@ -1618,6 +1618,7 @@
 
   // src/server.ts
   var ARCHIVE_KEY = "__vz__/archive.vzip";
+  var WORKER_HEADER = "X-Vzip-Worker";
   function decodeId(id) {
     if (!/^[A-Za-z0-9_-]+$/.test(id)) throw new Error(`invalid id ${id}`);
     const s = atob(id.replaceAll("-", "+").replaceAll("_", "/"));
@@ -1630,7 +1631,8 @@
       status,
       headers: {
         "Access-Control-Allow-Origin": "*",
-        "Access-Control-Expose-Headers": "Content-Range, Content-Length",
+        "Access-Control-Expose-Headers": `Content-Range, Content-Length, ${WORKER_HEADER}`,
+        [WORKER_HEADER]: "1",
         ...typeof body === "string" ? { "Content-Type": "text/plain; charset=utf-8" } : {},
         ...headers
       }
@@ -1748,6 +1750,9 @@
   var handle = makeHandler({ prefix });
   self.addEventListener("install", (event) => event.waitUntil(self.skipWaiting()));
   self.addEventListener("activate", (event) => event.waitUntil(self.clients.claim()));
+  self.addEventListener("message", (event) => {
+    if (event.data === "claim") event.waitUntil(self.clients.claim());
+  });
   self.addEventListener("fetch", (event) => {
     if (event.request.url.startsWith(prefix)) event.respondWith(handle(event.request));
   });
