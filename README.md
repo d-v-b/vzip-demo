@@ -5,10 +5,10 @@ byte-range references: **https://d-v-b.github.io/vzip-demo/**
 
 | demo | what it does |
 |---|---|
-| [tiff to zarr](https://d-v-b.github.io/vzip-demo/tiff-to-zarr/) | Virtualizes a remote (OME-)TIFF into a vzip archive in the browser, serves it as plain Zarr from a service worker, and opens it in Neuroglancer. |
+| [Image files to Zarr in the browser](https://d-v-b.github.io/vzip-demo/image-to-zarr/) | Paste the URL of a remote image file (OME-)TIFF or Nikon ND2, detected from its first bytes: a service worker virtualizes it into a vzip archive in the browser and serves it as plain Zarr, opened here in Neuroglancer. |
 
 This repository holds only the built sites, one directory per demo, published
 with GitHub Pages from the `gh-pages` branch. The source is in
-[d-v-b/vzip](https://github.com/d-v-b/vzip) (the TIFF-to-Zarr demo is in
-`web/` and is published by `web/pages.sh`) and in the vzip-enabled Neuroglancer
-fork, [d-v-b/neuroglancer](https://github.com/d-v-b/neuroglancer/tree/vzip).
+[d-v-b/vzip](https://github.com/d-v-b/vzip) (the demos are in `web/` and are
+published by `web/pages.sh`) and in the vzip-enabled Neuroglancer fork,
+[d-v-b/neuroglancer](https://github.com/d-v-b/neuroglancer/tree/vzip).

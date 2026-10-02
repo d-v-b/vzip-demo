@@ -30,11 +30,17 @@ var U64_MAX2 = (1n << 64n) - 1n;
 var utf82 = new TextEncoder();
 
 // src/archive.ts
+var MERGE_GAP = 1 << 16;
 var strictUtf82 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
+
+// src/lv.ts
+var utf16 = new TextDecoder("utf-16le");
+
+// src/nd2.ts
+var REQUIRED = Symbol("required");
 
 // src/tiff.ts
 var Tag = {
-  NewSubfileType: 254,
   ImageWidth: 256,
   ImageLength: 257,
   BitsPerSample: 258,
@@ -51,6 +57,15 @@ var Tag = {
   SampleFormat: 339
 };
 var WANTED = new Set(Object.values(Tag));
+
+// src/virtualize.ts
+var WS = "[ \\t\\r\\n]";
+var NAME = "[A-Za-z0-9_.-]+";
+var ANAME = `[^ \\t\\r\\n=/>"'<]+`;
+var SKIP = "<!--[^]*?(?:-->|$)|<!\\[CDATA\\[[^]*?(?:\\]\\]>|$)|<\\?[^]*?(?:\\?>|$)|<![^]*?(?:>|$)";
+var TAG = `<(/?)(?:${NAME}:)?(${NAME})((?:${WS}+${ANAME}${WS}*=${WS}*(?:"[^"]*"|'[^']*'))*)${WS}*(/?)>`;
+var SCAN = new RegExp(`(${SKIP})|(${TAG})|<`, "g");
+var ATTR = new RegExp(`(${ANAME})${WS}*=${WS}*(?:"([^"]*)"|'([^']*)')`, "g");
 
 // src/server.ts
 var ARCHIVE_KEY = "__vz__/archive.vzip";
@@ -89,8 +104,8 @@ async function registerVzipWorker(scriptUrl = "vzip-sw.js", timeoutMs = 1e4) {
   }
   return new URL("vz/", registration.scope).href;
 }
-function tiffZarrUrl(prefix2, url) {
-  return `${prefix2}tiff/${encodeId(new URL(url).href)}/`;
+function imageZarrUrl(prefix2, url) {
+  return `${prefix2}image/${encodeId(new URL(url).href)}/`;
 }
 function archiveZarrUrl(prefix2, url) {
   return `${prefix2}archive/${encodeId(new URL(url).href)}/`;
@@ -101,6 +116,7 @@ function archiveDownloadUrl(zarrUrl) {
 
 // demo/demo.ts
 var EXAMPLE = "https://ftp.ebi.ac.uk/pub/databases/IDR/idr0096-tratwal-marrowquant/20210609-ftp-ome-tiffs/4000_d11_m5_LT_2%20(20x_01).ome.tiff";
+var ND2_EXAMPLE = "https://ftp.ebi.ac.uk/biostudies/fire/S-BIAD/015/S-BIAD3015/Files/1-SR_1_9_6hPre-C_MC1.nd2";
 var $ = (id) => document.getElementById(id);
 var input = $("url");
 var status = $("status");
@@ -118,6 +134,7 @@ async function getJson(url) {
   if (!r.ok) throw new Error(`${r.status}: ${await r.text()}`);
   return r.json();
 }
+var SECONDS = { second: 1, millisecond: 1e-3, minute: 60, hour: 3600 };
 var METERS = {
   meter: 1,
   millimeter: 1e-3,
@@ -129,11 +146,27 @@ var METERS = {
   inch: 0.0254,
   foot: 0.3048
 };
-function neuroglancerState(zarrUrl, axes, scale, shape, dtype) {
+function neuroglancerState(zarrUrl, axes, scale, shape, dtype, omero = []) {
   const source = `${zarrUrl}|zarr3:`;
   const n = shape.length;
-  const extent = (i) => shape[i] * scale[i] * (METERS[axes[i].unit ?? ""] ?? 1);
-  const view = { crossSectionScale: Math.max(extent(n - 2) / 600, extent(n - 1) / 850), layout: "xy" };
+  const dimensions = {};
+  axes.forEach((a, i) => {
+    if (a.name === "c") return;
+    const unit = a.unit ?? "";
+    if (unit in METERS) dimensions[a.name] = [scale[i] * METERS[unit], "m"];
+    else if (unit in SECONDS) dimensions[a.name] = [scale[i] * SECONDS[unit], "s"];
+    else dimensions[a.name] = [scale[i], ""];
+  });
+  const position = axes.flatMap((a, i) => a.name === "c" ? [] : [a.name === "t" ? 0 : a.name === "z" ? Math.floor(shape[i] / 2) : shape[i] / 2]);
+  const view = {
+    dimensions,
+    position,
+    displayDimensions: ["x", "y"],
+    // Fit the whole image: with the coordinate space declared, this counts
+    // full-resolution voxels per screen pixel.
+    crossSectionScale: Math.max(shape[n - 2] / 600, shape[n - 1] / 850),
+    layout: "xy"
+  };
   const c = axes.findIndex((a) => a.name === "c");
   if (c >= 0 && shape[c] === 3 && dtype === "uint8") {
     const colors = ["v, 0.0, 0.0", "0.0, v, 0.0", "0.0, 0.0, v"];
@@ -156,6 +189,32 @@ function neuroglancerState(zarrUrl, axes, scale, shape, dtype) {
       ...view
     };
   }
+  if (c >= 0 && shape[c] > 1 && shape[c] <= 8) {
+    const hex = (s) => [0, 2, 4].map((i) => (parseInt(s.slice(i, i + 2), 16) / 255).toFixed(3));
+    return {
+      layers: Array.from({ length: shape[c] }, (_, i) => {
+        const ch = omero[i] ?? {};
+        const [r, g, b] = hex(ch.color ?? "FFFFFF");
+        const range = ch.window ? `(range=[${ch.window.start}, ${ch.window.end}])` : "";
+        return {
+          type: "image",
+          source,
+          name: ch.label ?? `channel ${i}`,
+          opacity: 1,
+          blend: "additive",
+          localDimensions: { "c'": [1, ""] },
+          localPosition: [i],
+          shader: `#uicontrol invlerp contrast${range}
+void main() {
+  emitRGB(vec3(${r}, ${g}, ${b}) * contrast());
+}
+`
+        };
+      }),
+      crossSectionBackgroundColor: "#000000",
+      ...view
+    };
+  }
   return { layers: [{ type: "image", source, name: "image" }], ...view };
 }
 var prefix;
@@ -168,15 +227,31 @@ async function virtualize(url) {
   prefix ??= registerVzipWorker(new URL("vzip-sw.js", location.href));
   const p = await prefix;
   const isArchive = /\.vzip(?:[?#]|$)/i.test(url);
-  const zarrUrl = isArchive ? archiveZarrUrl(p, url) : tiffZarrUrl(p, url);
-  setStatus(isArchive ? "Opening the archive\u2026" : "Reading the TIFF's directories\u2026");
+  const zarrUrl = isArchive ? archiveZarrUrl(p, url) : imageZarrUrl(p, url);
+  setStatus(isArchive ? "Opening the archive\u2026" : "Reading the file's structure\u2026");
   const t0 = performance.now();
   const group = await getJson(`${zarrUrl}zarr.json`);
   const ms = Math.round(performance.now() - t0);
-  const ms0 = group.attributes?.ome?.multiscales?.[0];
+  let imageUrl = zarrUrl;
+  let ms0 = group.attributes?.ome?.multiscales?.[0];
+  const seriesRow = $("series-row");
+  seriesRow.hidden = true;
+  if (ms0 === void 0 && group.attributes?.ome?.["bioformats2raw.layout"] !== void 0) {
+    const series = (await getJson(`${zarrUrl}OME/zarr.json`)).attributes?.ome?.series ?? [];
+    const chosen = here.searchParams.get("series") ?? series[0];
+    if (!series.includes(chosen)) throw new Error(`no series ${JSON.stringify(chosen)}`);
+    imageUrl = `${zarrUrl}${chosen}/`;
+    ms0 = (await getJson(`${imageUrl}zarr.json`)).attributes?.ome?.multiscales?.[0];
+    const select = $("series");
+    select.replaceChildren(
+      ...series.map((s) => Object.assign(document.createElement("option"), { value: s, textContent: s, selected: s === chosen }))
+    );
+    $("series-count").textContent = `of ${series.length}`;
+    seriesRow.hidden = false;
+  }
   if (ms0 === void 0) throw new Error("not an OME-Zarr multiscale image");
   const rows = await Promise.all(
-    ms0.datasets.map(async (d) => [d.path, await getJson(`${zarrUrl}${d.path}/zarr.json`)])
+    ms0.datasets.map(async (d) => [d.path, await getJson(`${imageUrl}${d.path}/zarr.json`)])
   );
   const tbody = $("levels");
   tbody.replaceChildren(
@@ -197,12 +272,13 @@ async function virtualize(url) {
     })
   );
   $("name").textContent = ms0.name ?? url.split("/").pop();
-  $("zarr-url").textContent = zarrUrl;
+  $("zarr-url").textContent = imageUrl;
   const [, level0] = rows[0];
   const scale = ms0.datasets[0].coordinateTransformations?.find(
     (t) => t.type === "scale"
   )?.scale ?? level0.shape.map(() => 1);
-  const state = neuroglancerState(zarrUrl, ms0.axes, scale, level0.shape, level0.data_type);
+  const omero = (await getJson(`${imageUrl}zarr.json`)).attributes?.ome?.omero?.channels ?? [];
+  const state = neuroglancerState(imageUrl, ms0.axes, scale, level0.shape, level0.data_type, omero);
   $("open-ng").href = new URL(
     `neuroglancer/#!${encodeURIComponent(JSON.stringify(state))}`,
     location.href
@@ -211,15 +287,28 @@ async function virtualize(url) {
   $("result").hidden = false;
   setStatus(`Ready in ${ms} ms.`);
 }
-$("form").addEventListener("submit", (event) => {
-  event.preventDefault();
+$("series").addEventListener("change", () => {
+  const here = new URL(location.href);
+  here.searchParams.set("series", $("series").value);
+  history.replaceState(null, "", here);
   virtualize(input.value.trim()).catch((e) => setStatus(String(e.message ?? e), true));
 });
-$("example").addEventListener("click", (event) => {
+$("form").addEventListener("submit", (event) => {
   event.preventDefault();
-  input.value = EXAMPLE;
-  $("form").requestSubmit();
+  const here = new URL(location.href);
+  if (here.searchParams.get("url") !== input.value.trim()) {
+    here.searchParams.delete("series");
+    history.replaceState(null, "", here);
+  }
+  virtualize(input.value.trim()).catch((e) => setStatus(String(e.message ?? e), true));
 });
+for (const [id, url] of [["example", EXAMPLE], ["example-nd2", ND2_EXAMPLE]]) {
+  $(id).addEventListener("click", (event) => {
+    event.preventDefault();
+    input.value = url;
+    $("form").requestSubmit();
+  });
+}
 var fromQuery = new URLSearchParams(location.search).get("url");
 if (fromQuery) {
   input.value = fromQuery;
