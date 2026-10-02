@@ -5,7 +5,7 @@ byte-range references: **https://d-v-b.github.io/vzip-demo/**
 
 | demo | what it does |
 |---|---|
-| [Image files to Zarr in the browser](https://d-v-b.github.io/vzip-demo/image-to-zarr/) | Paste the URL of a remote image file (OME-)TIFF or Nikon ND2, detected from its first bytes: a service worker virtualizes it into a vzip archive in the browser and serves it as plain Zarr, opened here in Neuroglancer. |
+| [Image files to Zarr in the browser](https://d-v-b.github.io/vzip-demo/image-to-zarr/) | Paste the URL of a remote image file, such as an (OME-)TIFF or a Nikon ND2: a service worker virtualizes it into a vzip archive in the browser and serves it as plain Zarr, opened here in Neuroglancer. |
 
 This repository holds only the built sites, one directory per demo, published
 with GitHub Pages from the `gh-pages` branch. The source is in
