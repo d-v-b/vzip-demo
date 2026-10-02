@@ -120,6 +120,8 @@ function archiveDownloadUrl(zarrUrl) {
 var EXAMPLE = "https://ftp.ebi.ac.uk/pub/databases/IDR/idr0096-tratwal-marrowquant/20210609-ftp-ome-tiffs/4000_d11_m5_LT_2%20(20x_01).ome.tiff";
 var ND2_EXAMPLE = "https://ftp.ebi.ac.uk/biostudies/fire/S-BIAD/015/S-BIAD3015/Files/1-SR_1_9_6hPre-C_MC1.nd2";
 var ND2_ZSTACK_EXAMPLE = "https://ftp.ebi.ac.uk/biostudies/fire/S-BIAD/077/S-BIAD2077/Files/373_230614_A1_Blk_Reg2_40x.nd2";
+var SVS_EXAMPLE = "https://zenodo.org/api/records/7189465/files/TCGA-CM-4752.svs/content";
+var NDPI_EXAMPLE = "https://zenodo.org/api/records/18302140/files/ki67_lymphoma.ndpi/content";
 var $ = (id) => document.getElementById(id);
 var input = $("url");
 var status = $("status");
@@ -363,7 +365,13 @@ $("form").addEventListener("submit", (event) => {
   event.preventDefault();
   virtualize(input.value.trim()).catch((e) => setStatus(String(e.message ?? e), true));
 });
-for (const [id, url] of [["example", EXAMPLE], ["example-nd2", ND2_EXAMPLE], ["example-nd2-zstack", ND2_ZSTACK_EXAMPLE]]) {
+for (const [id, url] of [
+  ["example", EXAMPLE],
+  ["example-nd2", ND2_EXAMPLE],
+  ["example-nd2-zstack", ND2_ZSTACK_EXAMPLE],
+  ["example-svs", SVS_EXAMPLE],
+  ["example-ndpi", NDPI_EXAMPLE]
+]) {
   $(id).addEventListener("click", (event) => {
     event.preventDefault();
     input.value = url;

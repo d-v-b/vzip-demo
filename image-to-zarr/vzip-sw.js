@@ -302,20 +302,35 @@
     return { data: body, size: total };
   }
   async function openHttpFile(url, signal) {
-    const head = await fetch(url, { method: "HEAD", signal });
-    const length = head.headers.get("Content-Length");
+    const lengthOf = (r) => {
+      const v = r.headers.get("Content-Length");
+      return r.status === 200 && v !== null && /^\d+$/.test(v) ? Number(v) : void 0;
+    };
     let size;
-    if (head.ok && length !== null && /^\d+$/.test(length)) {
-      size = Number(length);
-    } else {
+    let headStatus = "failed";
+    try {
+      const head = await fetch(url, { method: "HEAD", signal });
+      headStatus = String(head.status);
+      size = lengthOf(head);
+    } catch (e) {
+      if (signal?.aborted) throw e;
+    }
+    if (size === void 0) {
       const probe = await fetch(url, { headers: { Range: "bytes=0-0" }, signal });
       const total = probe.headers.get("Content-Range")?.match(/\/(\d+)$/)?.[1];
       await probe.body?.cancel();
       if (probe.status === 206 && total !== void 0) size = Number(total);
     }
     if (size === void 0) {
+      const abort = new AbortController();
+      signal?.addEventListener("abort", () => abort.abort(), { once: true });
+      const full = await fetch(url, { signal: abort.signal });
+      if (full.status === 200) size = lengthOf(full);
+      abort.abort();
+    }
+    if (size === void 0) {
       throw new HttpResolutionError(
-        `${url}: cannot determine the size (HEAD ${head.status})`
+        `${url}: cannot determine the size (HEAD ${headStatus})`
       );
     }
     return {
