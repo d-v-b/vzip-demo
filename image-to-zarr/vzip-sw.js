@@ -1527,6 +1527,10 @@
     const cal = number(picture.get("dCalibration"), "dCalibration", null);
     let aspect = number(picture.get("dAspect"), "dAspect", 1);
     const [m11, m12, m21, m22] = [["11", 1], ["12", 0], ["21", 0], ["22", 1]].map(([k, fallback]) => number(picture.get(`dStgLgCT${k}`), `dStgLgCT${k}`, fallback));
+    const pictureStage = [
+      number(picture.get("dXPos"), "dXPos", null),
+      number(picture.get("dYPos"), "dYPos", null)
+    ];
     const calibrated = bCalibrated && cal !== null && cal > 0;
     if (!(aspect > 0)) aspect = 1;
     const pp = obj(picture.get("sPicturePlanes"), "sPicturePlanes", null) ?? /* @__PURE__ */ new Map();
@@ -1643,8 +1647,9 @@
     const positions = p?.count ?? 1;
     const det = m11 * m22 - m12 * m21;
     let translations;
-    if (p?.stage && calibrated && det !== 0 && p.stage.every(([x, y]) => x !== null && y !== null)) {
-      translations = p.stage.map(([sx, sy]) => {
+    const stages = p ? p.stage ?? [] : [pictureStage];
+    if (calibrated && det !== 0 && stages.every(([x, y]) => x !== null && y !== null)) {
+      translations = stages.map(([sx, sy]) => {
         const u = (m22 * sx - m12 * sy) / det;
         const v = (m11 * sy - m21 * sx) / det;
         const shift = { x: u - width * scale.x / 2, y: v - height * scale.y / 2 };
@@ -1754,10 +1759,14 @@
     TileByteCounts: 325,
     SubIFDs: 330,
     SampleFormat: 339,
-    JPEGTables: 347
+    JPEGTables: 347,
+    XResolution: 282,
+    YResolution: 283,
+    ResolutionUnit: 296
   };
   var WANTED = new Set(Object.values(Tag));
-  var SCALARS = /* @__PURE__ */ new Set([256, 257, 259, 262, 277, 284, 317, 322, 323]);
+  var SCALARS = /* @__PURE__ */ new Set([256, 257, 259, 262, 277, 282, 283, 284, 296, 317, 322, 323]);
+  var RATIONAL_TAGS = /* @__PURE__ */ new Set([282, 283]);
   var INTEGER_TYPES = /* @__PURE__ */ new Set([1, 3, 4, 13, 16, 18]);
   var TYPE_SIZE = {
     1: 1,
@@ -1857,7 +1866,8 @@
           out.push(view2.getFloat64(8 * i, le2));
           break;
         case 5:
-          out.push(view2.getUint32(8 * i, le2) / view2.getUint32(8 * i + 4, le2));
+          if (RATIONAL_TAGS.has(tag)) out.push(view2.getUint32(8 * i, le2), view2.getUint32(8 * i + 4, le2));
+          else out.push(view2.getUint32(8 * i, le2) / view2.getUint32(8 * i + 4, le2));
           break;
         case 10:
           out.push(view2.getInt32(8 * i, le2) / view2.getInt32(8 * i + 4, le2));
@@ -1914,7 +1924,7 @@
         const type = view2.getUint16(at + 2, le2);
         const n = bigTiff ? u64(view2, at + 4, le2) : view2.getUint32(at + 4, le2);
         const size = TYPE_SIZE[type];
-        const allowed = tag === Tag.ImageDescription ? size !== void 0 : tag === Tag.JPEGTables ? type === 1 || type === 7 : INTEGER_TYPES.has(type);
+        const allowed = tag === Tag.ImageDescription ? size !== void 0 : tag === Tag.JPEGTables ? type === 1 || type === 7 : RATIONAL_TAGS.has(tag) ? type === 5 : INTEGER_TYPES.has(type);
         if (!allowed) {
           throw new TiffError(`tag ${tag} has field type ${type}`);
         }
@@ -1990,6 +2000,7 @@
     18: 8
   };
   var INTEGER = /* @__PURE__ */ new Set([1, 3, 4, 13, 16, 18]);
+  var OFFSET = /* @__PURE__ */ new Set([3, 4, 8, 9]);
   var TAGS = {
     256: [INTEGER, true],
     257: [INTEGER, true],
@@ -2004,6 +2015,8 @@
     296: [INTEGER, true],
     65420: [INTEGER, true],
     65421: [/* @__PURE__ */ new Set([11, 12]), true],
+    65422: [OFFSET, true],
+    65423: [OFFSET, true],
     65426: [INTEGER, false],
     65432: [INTEGER, false]
   };
@@ -2076,6 +2089,10 @@
           return v.getUint8(i);
         case 3:
           return v.getUint16(2 * i, true);
+        case 8:
+          return v.getInt16(2 * i, true);
+        case 9:
+          return v.getInt32(4 * i, true);
         case 4:
         case 13:
           return v.getUint32(4 * i, true);
@@ -2206,6 +2223,12 @@
       });
     }
     const unit = (p) => p === void 0 ? {} : { unit: "micrometer" };
+    const offsetX = base.tags.get(65422)?.[0];
+    const offsetY = base.tags.get(65423)?.[0];
+    if (px !== void 0 && py !== void 0 && offsetX !== void 0 && offsetY !== void 0) {
+      const translation = [0, offsetY / 1e3 - base.h * py / 2, offsetX / 1e3 - base.w * px / 2];
+      for (const d of datasets) d.coordinateTransformations.push({ type: "translation", translation });
+    }
     entries.push({
       key: "zarr.json",
       bytes: json({
@@ -2379,7 +2402,8 @@
       }
       tiffData.push(td);
     });
-    return { name, pixels: tags[pi].attrs, tiffData };
+    const plane = inside.find((t) => !t.closing && t.name === "Plane" && ["TheZ", "TheC", "TheT"].every((k) => intAttr(t.attrs, k, 0) === 0))?.attrs;
+    return { name, pixels: tags[pi].attrs, tiffData, plane };
   }
   function intAttr(attrs, key, fallback, minimum = 0) {
     const v = attrs[key];
@@ -2392,11 +2416,42 @@
     return n;
   }
   function physical(attrs, d) {
-    const v = attrs[`PhysicalSize${d}`];
+    return decimal(attrs[`PhysicalSize${d}`], true);
+  }
+  function decimal(v, positive = false) {
     if (v === void 0 || !DECIMAL.test(v)) return void 0;
     const x = Number(v);
-    return Number.isFinite(x) && x > 0 ? x : void 0;
+    return Number.isFinite(x) && (x > 0 || !positive) ? x : void 0;
   }
+  function aperioFields(description) {
+    if (String.fromCharCode(...description.subarray(0, 6)) !== "Aperio") return void 0;
+    let text;
+    try {
+      text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(description);
+    } catch {
+      return void 0;
+    }
+    const fields2 = /* @__PURE__ */ new Map();
+    const trim = (s) => s.replace(/^[ \t\r\n]+|[ \t\r\n]+$/g, "");
+    for (const part of text.split("|")) {
+      const at = part.indexOf("=");
+      if (at < 0) continue;
+      const name = trim(part.slice(0, at));
+      if (!fields2.has(name)) fields2.set(name, trim(part.slice(at + 1)));
+    }
+    return fields2;
+  }
+  var LENGTHS = {
+    micrometer: 1e-6,
+    nanometer: 1e-9,
+    millimeter: 1e-3,
+    centimeter: 0.01,
+    meter: 1,
+    angstrom: 1e-10,
+    picometer: 1e-12,
+    inch: 0.0254,
+    foot: 0.3048
+  };
   var UNITS = {
     "\xB5m": "micrometer",
     "um": "micrometer",
@@ -2488,9 +2543,11 @@
     const description = ifd0.tags.get(Tag.ImageDescription);
     let raw;
     let ome;
+    let ascii2;
     if (ifd0.types.get(Tag.ImageDescription) === 2 && description instanceof Uint8Array) {
       const nul = description.indexOf(0);
       const d = nul < 0 ? description : description.subarray(0, nul);
+      ascii2 = d;
       let text;
       try {
         text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(d);
@@ -2571,13 +2628,53 @@
       if (!l.ifds.every((i) => sameFormat(i, ifd0))) reject4("pyramid levels differ in sample format or compression");
     }
     const contig = f.spp > 1 && f.planar === 1;
+    const sizes = {};
+    const units = {};
+    let centre;
+    let corner;
+    if (ome !== void 0) {
+      for (const [d, a] of [["Z", "z"], ["Y", "y"], ["X", "x"]]) {
+        const v = physical(px, d);
+        if (v === void 0) continue;
+        sizes[a] = v;
+        const u = UNITS[px[`PhysicalSize${d}Unit`] ?? "\xB5m"];
+        if (u) units[a] = u;
+      }
+      const stage = ome.plane ?? {};
+      const pos = { x: decimal(stage.PositionX), y: decimal(stage.PositionY) };
+      const posUnits = { x: UNITS[stage.PositionXUnit ?? ""], y: UNITS[stage.PositionYUnit ?? ""] };
+      if (["x", "y"].every((a) => pos[a] !== void 0 && posUnits[a] in LENGTHS && units[a] in LENGTHS)) {
+        centre = {
+          x: pos.x * (LENGTHS[posUnits.x] / LENGTHS[units.x]),
+          y: pos.y * (LENGTHS[posUnits.y] / LENGTHS[units.y])
+        };
+      }
+    } else {
+      const fields2 = ascii2 === void 0 ? void 0 : aperioFields(ascii2);
+      const mpp = decimal(fields2?.get("MPP"), true);
+      if (mpp !== void 0) {
+        sizes.x = sizes.y = mpp;
+        units.x = units.y = "micrometer";
+        const left = decimal(fields2.get("Left"));
+        const top = decimal(fields2.get("Top"));
+        if (left !== void 0 && top !== void 0) corner = { x: left * 1e3, y: top * 1e3 };
+      } else {
+        const perUnit = { 2: 25400, 3: 1e4 }[num(ifd0, Tag.ResolutionUnit, 2)];
+        for (const [tag, a] of [[Tag.XResolution, "x"], [Tag.YResolution, "y"]]) {
+          const r = ifd0.tags.get(tag);
+          if (perUnit !== void 0 && r !== void 0 && r[0] > 0 && r[1] > 0) {
+            sizes[a] = perUnit / (r[0] / r[1]);
+            units[a] = "micrometer";
+          }
+        }
+      }
+    }
     const axes = [];
-    const unit = (d) => physical(px, d) === void 0 ? void 0 : UNITS[px[`PhysicalSize${d}Unit`] ?? "\xB5m"];
     if (sizeT > 1) axes.push({ name: "t", type: "time", size: sizeT });
     if (sizeC > 1) axes.push({ name: "c", type: "channel", size: sizeC });
-    if (sizeZ > 1) axes.push({ name: "z", type: "space", unit: unit("Z"), size: sizeZ });
-    axes.push({ name: "y", type: "space", unit: unit("Y"), size: 0 });
-    axes.push({ name: "x", type: "space", unit: unit("X"), size: 0 });
+    if (sizeZ > 1) axes.push({ name: "z", type: "space", unit: units.z, size: sizeZ });
+    axes.push({ name: "y", type: "space", unit: units.y, size: 0 });
+    axes.push({ name: "x", type: "space", unit: units.x, size: 0 });
     const cAxis = axes.findIndex((a) => a.name === "c");
     const dataType = dtype(f.bits, f.sampleFormat);
     const itemsize = f.bits / 8;
@@ -2684,12 +2781,22 @@
         }
       }
       const scale = axes.map((a) => {
-        if (a.name === "y") return (physical(px, "Y") ?? 1) * (base.height / l.height);
-        if (a.name === "x") return (physical(px, "X") ?? 1) * (base.width / l.width);
-        if (a.name === "z") return physical(px, "Z") ?? 1;
+        if (a.name === "y") return (sizes.y ?? 1) * (base.height / l.height);
+        if (a.name === "x") return (sizes.x ?? 1) * (base.width / l.width);
+        if (a.name === "z") return sizes.z ?? 1;
         return 1;
       });
       datasets.push({ path: String(li), coordinateTransformations: [{ type: "scale", scale }] });
+    }
+    if (units.x !== void 0 && units.y !== void 0) {
+      if (centre !== void 0) {
+        corner = { x: centre.x - base.width * (sizes.x ?? 1) / 2, y: centre.y - base.height * (sizes.y ?? 1) / 2 };
+      }
+      if (corner !== void 0) {
+        const translation = axes.map((a) => corner[a.name] ?? 0);
+        if (!translation.every(Number.isFinite)) reject4("a translation is not finite");
+        for (const d of datasets) d.coordinateTransformations.push({ type: "translation", translation });
+      }
     }
     const name = ome?.name || void 0;
     meta.push({
@@ -2702,7 +2809,7 @@
             version: "0.5",
             multiscales: [{
               ...name === void 0 ? {} : { name },
-              axes: axes.map(({ name: name2, type, unit: unit2 }) => ({ name: name2, type, ...unit2 ? { unit: unit2 } : {} })),
+              axes: axes.map(({ name: name2, type, unit }) => ({ name: name2, type, ...unit ? { unit } : {} })),
               datasets
             }]
           }

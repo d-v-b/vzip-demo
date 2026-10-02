@@ -56,7 +56,10 @@ var Tag = {
   TileByteCounts: 325,
   SubIFDs: 330,
   SampleFormat: 339,
-  JPEGTables: 347
+  JPEGTables: 347,
+  XResolution: 282,
+  YResolution: 283,
+  ResolutionUnit: 296
 };
 var WANTED = new Set(Object.values(Tag));
 
