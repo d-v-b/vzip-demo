@@ -147,8 +147,7 @@ var METERS = {
   inch: 0.0254,
   foot: 0.3048
 };
-function neuroglancerState(zarrUrl, axes, scale, shape, chunks, dtype, omero = []) {
-  const source = `${zarrUrl}|zarr3:`;
+function neuroglancerState(images, axes, scale, shape, chunks, dtype, omero = []) {
   const n = shape.length;
   const dimensions = {};
   axes.forEach((a, i) => {
@@ -158,51 +157,59 @@ function neuroglancerState(zarrUrl, axes, scale, shape, chunks, dtype, omero = [
     else if (unit in SECONDS) dimensions[a.name] = [scale[i] * SECONDS[unit], "s"];
     else dimensions[a.name] = [scale[i], ""];
   });
-  const position = axes.flatMap((a, i) => a.name === "c" ? [] : [a.name === "t" ? 0 : a.name === "z" ? Math.floor(shape[i] / 2) : shape[i] / 2]);
+  const offset = (img, i) => (img.translation?.[i] ?? 0) / scale[i];
+  const position = axes.flatMap((a, i) => a.name === "c" ? [] : [a.name === "t" ? 0 : a.name === "z" ? Math.floor(shape[i] / 2) : offset(images[0], i) + shape[i] / 2]);
   const view = {
     dimensions,
     position,
     displayDimensions: ["x", "y"],
-    // Fit the whole image: with the coordinate space declared, this counts
-    // full-resolution voxels per screen pixel.
+    // With the coordinate space declared, this counts full-resolution voxels
+    // per screen pixel.
     crossSectionScale: Math.max(shape[n - 2] / 600, shape[n - 1] / 850),
     layout: "xy"
   };
+  const many = images.length > 1;
   const c = axes.findIndex((a) => a.name === "c");
   if (c >= 0 && shape[c] > 1 && shape[c] <= 16 && chunks[c] === shape[c]) {
     const outputDimensions = Object.fromEntries(
       axes.map((a) => a.name === "c" ? ["c^", [1, ""]] : [a.name, dimensions[a.name]])
     );
     const rgb = shape[c] === 3 && dtype === "uint8" && omero.length === 0;
+    const shader = rgb ? RGB_SHADER : channelShader(shape[c], omero);
     return {
-      layers: [{
+      layers: images.map((img) => ({
         type: "image",
-        source: { url: source, transform: { outputDimensions } },
-        name: rgb ? "image" : "channels",
+        source: { url: `${img.url}|zarr3:`, transform: { outputDimensions } },
+        name: many ? img.name : rgb ? "image" : "channels",
         opacity: 1,
-        shader: rgb ? RGB_SHADER : channelShader(shape[c], omero)
-      }],
+        shader
+      })),
       crossSectionBackgroundColor: "#000000",
       ...view
     };
   }
+  const perChannel = (label, i, shader) => images.map((img) => ({
+    type: "image",
+    source: `${img.url}|zarr3:`,
+    name: many ? `${img.name} ${label}` : label,
+    opacity: 1,
+    blend: "additive",
+    localDimensions: { "c'": [1, ""] },
+    localPosition: [i],
+    shader
+  }));
   if (c >= 0 && shape[c] === 3 && dtype === "uint8") {
     const colors = ["v, 0.0, 0.0", "0.0, v, 0.0", "0.0, 0.0, v"];
     return {
-      layers: colors.map((rgb, i) => ({
-        type: "image",
-        source,
-        name: ["red", "green", "blue"][i],
-        opacity: 1,
-        blend: "additive",
-        localDimensions: { "c'": [1, ""] },
-        localPosition: [i],
-        shader: `void main() {
+      layers: colors.flatMap((rgb, i) => perChannel(
+        ["red", "green", "blue"][i],
+        i,
+        `void main() {
   float v = toNormalized(getDataValue());
   emitRGB(vec3(${rgb}));
 }
 `
-      })),
+      )),
       crossSectionBackgroundColor: "#000000",
       ...view
     };
@@ -214,26 +221,24 @@ function neuroglancerState(zarrUrl, axes, scale, shape, chunks, dtype, omero = [
         const ch = omero[i] ?? {};
         const [r, g, b] = hex(ch.color ?? "FFFFFF");
         const range = ch.window ? `(range=[${ch.window.start}, ${ch.window.end}])` : "";
-        return {
-          type: "image",
-          source,
-          name: ch.label ?? `channel ${i}`,
-          opacity: 1,
-          blend: "additive",
-          localDimensions: { "c'": [1, ""] },
-          localPosition: [i],
-          shader: `#uicontrol invlerp contrast${range}
+        return perChannel(
+          ch.label ?? `channel ${i}`,
+          i,
+          `#uicontrol invlerp contrast${range}
 void main() {
   emitRGB(vec3(${r}, ${g}, ${b}) * contrast());
 }
 `
-        };
-      }),
+        );
+      }).flat(),
       crossSectionBackgroundColor: "#000000",
       ...view
     };
   }
-  return { layers: [{ type: "image", source, name: "image" }], ...view };
+  return {
+    layers: images.map((img) => ({ type: "image", source: `${img.url}|zarr3:`, name: many ? img.name : "image" })),
+    ...view
+  };
 }
 var RGB_SHADER = `void main() {
   emitRGB(vec3(toNormalized(getDataValue(0)), toNormalized(getDataValue(1)), toNormalized(getDataValue(2))));
@@ -268,6 +273,9 @@ ${sum.join("\n")}
 }
 `;
 }
+function translationOf(ms) {
+  return ms?.datasets?.[0]?.coordinateTransformations?.find((t) => t.type === "translation")?.translation;
+}
 var prefix;
 async function virtualize(url) {
   $("result").hidden = true;
@@ -285,20 +293,23 @@ async function virtualize(url) {
   const ms = Math.round(performance.now() - t0);
   let imageUrl = zarrUrl;
   let ms0 = group.attributes?.ome?.multiscales?.[0];
+  let images = [{ url: zarrUrl, name: "image", translation: translationOf(ms0) }];
   const seriesRow = $("series-row");
   seriesRow.hidden = true;
   if (ms0 === void 0 && group.attributes?.ome?.["bioformats2raw.layout"] !== void 0) {
     const series = (await getJson(`${zarrUrl}OME/zarr.json`)).attributes?.ome?.series ?? [];
-    const chosen = here.searchParams.get("series") ?? series[0];
-    if (!series.includes(chosen)) throw new Error(`no series ${JSON.stringify(chosen)}`);
-    imageUrl = `${zarrUrl}${chosen}/`;
-    ms0 = (await getJson(`${imageUrl}zarr.json`)).attributes?.ome?.multiscales?.[0];
-    const select = $("series");
-    select.replaceChildren(
-      ...series.map((s) => Object.assign(document.createElement("option"), { value: s, textContent: s, selected: s === chosen }))
-    );
-    $("series-count").textContent = `of ${series.length}`;
-    seriesRow.hidden = false;
+    const groups = await Promise.all(series.map((s) => getJson(`${zarrUrl}${s}/zarr.json`)));
+    images = series.map((s, i) => {
+      const m = groups[i].attributes?.ome?.multiscales?.[0];
+      return { url: `${zarrUrl}${s}/`, name: m?.name ?? `series ${s}`, translation: translationOf(m) };
+    });
+    imageUrl = images[0].url;
+    ms0 = groups[0]?.attributes?.ome?.multiscales?.[0];
+    if (series.length > 1) {
+      const placed = images.every((img) => img.translation !== void 0);
+      $("series-count").textContent = `${series.length} images (series ${series[0]}\u2013${series[series.length - 1]}), ` + (placed ? "placed at their stage positions; zoom out in Neuroglancer to see them all." : "without stage positions, so they overlap.");
+      seriesRow.hidden = false;
+    }
   }
   if (ms0 === void 0) throw new Error("not an OME-Zarr multiscale image");
   const rows = await Promise.all(
@@ -330,7 +341,7 @@ async function virtualize(url) {
   )?.scale ?? level0.shape.map(() => 1);
   const omero = (await getJson(`${imageUrl}zarr.json`)).attributes?.ome?.omero?.channels ?? [];
   const state = neuroglancerState(
-    imageUrl,
+    images,
     ms0.axes,
     scale,
     level0.shape,
@@ -346,19 +357,8 @@ async function virtualize(url) {
   $("result").hidden = false;
   setStatus(`Ready in ${ms} ms.`);
 }
-$("series").addEventListener("change", () => {
-  const here = new URL(location.href);
-  here.searchParams.set("series", $("series").value);
-  history.replaceState(null, "", here);
-  virtualize(input.value.trim()).catch((e) => setStatus(String(e.message ?? e), true));
-});
 $("form").addEventListener("submit", (event) => {
   event.preventDefault();
-  const here = new URL(location.href);
-  if (here.searchParams.get("url") !== input.value.trim()) {
-    here.searchParams.delete("series");
-    history.replaceState(null, "", here);
-  }
   virtualize(input.value.trim()).catch((e) => setStatus(String(e.message ?? e), true));
 });
 for (const [id, url] of [["example", EXAMPLE], ["example-nd2", ND2_EXAMPLE], ["example-nd2-zstack", ND2_ZSTACK_EXAMPLE]]) {
