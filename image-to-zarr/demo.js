@@ -147,7 +147,7 @@ var METERS = {
   inch: 0.0254,
   foot: 0.3048
 };
-function neuroglancerState(zarrUrl, axes, scale, shape, dtype, omero = []) {
+function neuroglancerState(zarrUrl, axes, scale, shape, chunks, dtype, omero = []) {
   const source = `${zarrUrl}|zarr3:`;
   const n = shape.length;
   const dimensions = {};
@@ -169,6 +169,23 @@ function neuroglancerState(zarrUrl, axes, scale, shape, dtype, omero = []) {
     layout: "xy"
   };
   const c = axes.findIndex((a) => a.name === "c");
+  if (c >= 0 && shape[c] > 1 && shape[c] <= 16 && chunks[c] === shape[c]) {
+    const outputDimensions = Object.fromEntries(
+      axes.map((a) => a.name === "c" ? ["c^", [1, ""]] : [a.name, dimensions[a.name]])
+    );
+    const rgb = shape[c] === 3 && dtype === "uint8" && omero.length === 0;
+    return {
+      layers: [{
+        type: "image",
+        source: { url: source, transform: { outputDimensions } },
+        name: rgb ? "image" : "channels",
+        opacity: 1,
+        shader: rgb ? RGB_SHADER : channelShader(shape[c], omero)
+      }],
+      crossSectionBackgroundColor: "#000000",
+      ...view
+    };
+  }
   if (c >= 0 && shape[c] === 3 && dtype === "uint8") {
     const colors = ["v, 0.0, 0.0", "0.0, v, 0.0", "0.0, 0.0, v"];
     return {
@@ -217,6 +234,39 @@ void main() {
     };
   }
   return { layers: [{ type: "image", source, name: "image" }], ...view };
+}
+var RGB_SHADER = `void main() {
+  emitRGB(vec3(toNormalized(getDataValue(0)), toNormalized(getDataValue(1)), toNormalized(getDataValue(2))));
+}
+`;
+function channelShader(n, omero) {
+  const used = /* @__PURE__ */ new Set();
+  const ident = (label, k) => {
+    let id = label.toLowerCase().replace(/[^a-z0-9_]/g, "_").replace(/^(?=[^a-z])/, "c");
+    if (id === "" || id.length > 40 || used.has(id)) id = `channel${k}`;
+    used.add(id);
+    return id;
+  };
+  const controls = [];
+  const sum = [];
+  for (let k = 0; k < n; k++) {
+    const ch = omero[k] ?? {};
+    const id = ident(ch.label ?? `channel${k}`, k);
+    const range = ch.window ? `, range=[${ch.window.start}, ${ch.window.end}]` : "";
+    controls.push(
+      `#uicontrol bool ${id}_on checkbox(default=true)`,
+      `#uicontrol vec3 ${id}_color color(default="#${(ch.color ?? "FFFFFF").toLowerCase()}")`,
+      `#uicontrol invlerp ${id}(channel=${k}${range})`
+    );
+    sum.push(`  if (${id}_on) rgb += ${id}_color * ${id}();`);
+  }
+  return `${controls.join("\n")}
+void main() {
+  vec3 rgb = vec3(0.0);
+${sum.join("\n")}
+  emitRGB(rgb);
+}
+`;
 }
 var prefix;
 async function virtualize(url) {
@@ -279,7 +329,15 @@ async function virtualize(url) {
     (t) => t.type === "scale"
   )?.scale ?? level0.shape.map(() => 1);
   const omero = (await getJson(`${imageUrl}zarr.json`)).attributes?.ome?.omero?.channels ?? [];
-  const state = neuroglancerState(imageUrl, ms0.axes, scale, level0.shape, level0.data_type, omero);
+  const state = neuroglancerState(
+    imageUrl,
+    ms0.axes,
+    scale,
+    level0.shape,
+    level0.chunk_grid.configuration.chunk_shape,
+    level0.data_type,
+    omero
+  );
   $("open-ng").href = new URL(
     `neuroglancer/#!${encodeURIComponent(JSON.stringify(state))}`,
     location.href
