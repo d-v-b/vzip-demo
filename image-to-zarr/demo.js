@@ -45,6 +45,7 @@ var Tag = {
   ImageLength: 257,
   BitsPerSample: 258,
   Compression: 259,
+  PhotometricInterpretation: 262,
   ImageDescription: 270,
   SamplesPerPixel: 277,
   PlanarConfiguration: 284,
@@ -54,7 +55,8 @@ var Tag = {
   TileOffsets: 324,
   TileByteCounts: 325,
   SubIFDs: 330,
-  SampleFormat: 339
+  SampleFormat: 339,
+  JPEGTables: 347
 };
 var WANTED = new Set(Object.values(Tag));
 

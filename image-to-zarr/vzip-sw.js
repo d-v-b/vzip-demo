@@ -1432,13 +1432,15 @@
     }
     return n;
   }
-  function rangeSize2(offset, length) {
+  function rangeSize2(r) {
+    if (r instanceof Uint8Array) return 1 + varintSize(r.length) + r.length;
+    const [offset, length] = r;
     return (offset ? 1 + varintSize(offset) : 0) + (length ? 1 + varintSize(length) : 0);
   }
   function payloadSize(ranges) {
-    if (ranges.length === 1) return rangeSize2(...ranges[0]);
-    return ranges.reduce((n, [o, l]) => {
-      const r = rangeSize2(o, l);
+    if (ranges.length === 1) return rangeSize2(ranges[0]);
+    return ranges.reduce((n, range) => {
+      const r = rangeSize2(range);
       return n + 1 + varintSize(r) + r;
     }, 0);
   }
@@ -1726,6 +1728,7 @@
     ImageLength: 257,
     BitsPerSample: 258,
     Compression: 259,
+    PhotometricInterpretation: 262,
     ImageDescription: 270,
     SamplesPerPixel: 277,
     PlanarConfiguration: 284,
@@ -1735,10 +1738,11 @@
     TileOffsets: 324,
     TileByteCounts: 325,
     SubIFDs: 330,
-    SampleFormat: 339
+    SampleFormat: 339,
+    JPEGTables: 347
   };
   var WANTED = new Set(Object.values(Tag));
-  var SCALARS = /* @__PURE__ */ new Set([256, 257, 259, 277, 284, 317, 322, 323]);
+  var SCALARS = /* @__PURE__ */ new Set([256, 257, 259, 262, 277, 284, 317, 322, 323]);
   var INTEGER_TYPES = /* @__PURE__ */ new Set([1, 3, 4, 13, 16, 18]);
   var TYPE_SIZE = {
     1: 1,
@@ -1793,9 +1797,9 @@
     if (v > BigInt(Number.MAX_SAFE_INTEGER)) throw new TiffError("offset too large");
     return Number(v);
   }
-  function values(bytes, type, count, le2) {
+  function values(bytes, type, count, le2, tag = 0) {
     const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-    if (type === 2) return bytes.slice();
+    if (type === 2 || tag === Tag.JPEGTables) return bytes.slice();
     const out = [];
     for (let i = 0; i < count; i++) {
       switch (type) {
@@ -1895,20 +1899,21 @@
         const type = view.getUint16(at + 2, le2);
         const n = bigTiff ? u64(view, at + 4, le2) : view.getUint32(at + 4, le2);
         const size = TYPE_SIZE[type];
-        if (tag === Tag.ImageDescription ? size === void 0 : !INTEGER_TYPES.has(type)) {
+        const allowed = tag === Tag.ImageDescription ? size !== void 0 : tag === Tag.JPEGTables ? type === 1 || type === 7 : INTEGER_TYPES.has(type);
+        if (!allowed) {
           throw new TiffError(`tag ${tag} has field type ${type}`);
         }
         if (SCALARS.has(tag) && n === 0) throw new TiffError(`tag ${tag} has no value`);
         const valueAt = at + 4 + (bigTiff ? 8 : 4);
         if (n * size <= fieldSize) {
           types.set(tag, type);
-          tags.set(tag, values(body.subarray(valueAt, valueAt + n * size), type, n, le2));
+          tags.set(tag, values(body.subarray(valueAt, valueAt + n * size), type, n, le2, tag));
         } else {
           const where = bigTiff ? u64(view, valueAt, le2) : view.getUint32(valueAt, le2);
           types.set(tag, type);
           pending.push(
             read(where, n * size).then((b) => {
-              tags.set(tag, values(b, type, n, le2));
+              tags.set(tag, values(b, type, n, le2, tag));
             })
           );
         }
@@ -1949,6 +1954,22 @@
 
   // src/virtualize.ts
   var JPEG2000 = /* @__PURE__ */ new Set([33003, 33004, 33005, 34712]);
+  var JPEG = 7;
+  var MAX_PAYLOAD3 = 65519;
+  var ADOBE = [255, 238, 0, 14, 65, 100, 111, 98, 101, 0, 100, 0, 0, 0, 0];
+  function jpegPrefix(ifd, spp, photometric) {
+    const out = [255, 216];
+    if (spp === 3) out.push(...ADOBE, photometric === 2 ? 0 : 1);
+    const tables = ifd.tags.get(Tag.JPEGTables);
+    if (tables !== void 0) {
+      const n = tables.length;
+      if (n < 4 || tables[0] !== 255 || tables[1] !== 216 || tables[n - 2] !== 255 || tables[n - 1] !== 217) {
+        reject3(`the IFD at ${ifd.offset} has malformed JPEGTables`);
+      }
+      out.push(...tables.subarray(2, n - 2));
+    }
+    return Uint8Array.from(out);
+  }
   var reject3 = (message) => {
     throw new TiffError(message);
   };
@@ -2087,7 +2108,9 @@
       sampleFormat: formats[0],
       planar,
       compression: num(ifd, Tag.Compression, 1),
-      predictor: num(ifd, Tag.Predictor, 1)
+      predictor: num(ifd, Tag.Predictor, 1),
+      // For JPEG, PhotometricInterpretation is part of the format (§3.1).
+      photometric: num(ifd, Tag.Compression, 1) === JPEG ? ifd.tags.get(Tag.PhotometricInterpretation)?.[0] ?? null : null
     };
   }
   var sameFormat = (a, b) => JSON.stringify(format(a)) === JSON.stringify(format(b));
@@ -2237,6 +2260,12 @@
     if (JPEG2000.has(f.compression)) {
       codecs = [{ name: "imagecodecs_jpeg2k" }];
       codecName = "imagecodecs_jpeg2k";
+    } else if (f.compression === JPEG) {
+      if (f.bits !== 8 || f.sampleFormat !== 1 || !(f.spp === 1 || f.spp === 3 && f.planar === 1 && (f.photometric === 2 || f.photometric === 6))) {
+        reject3(`unsupported JPEG: ${f.bits}-bit, ${f.spp} samples, planar ${f.planar}, photometric ${f.photometric}`);
+      }
+      codecs = [{ name: "imagecodecs_jpeg" }];
+      codecName = "imagecodecs_jpeg";
     } else {
       const bytes = itemsize > 1 ? { name: "bytes", configuration: { endian: tiff.littleEndian ? "little" : "big" } } : { name: "bytes" };
       codecs = [bytes];
@@ -2297,6 +2326,7 @@
             const ifd = l.ifds[plane(t, c, z)];
             const offsets = nums(ifd, Tag.TileOffsets);
             const counts = nums(ifd, Tag.TileByteCounts);
+            const prefix2 = f.compression === JPEG ? jpegPrefix(ifd, f.spp, f.photometric) : void 0;
             const samples = f.spp > 1 && !contig ? f.spp : 1;
             if (offsets.length !== samples * perSample || counts.length !== samples * perSample) {
               reject3(`IFD at ${ifd.offset} has ${offsets.length} tiles, expected ${samples * perSample}`);
@@ -2311,8 +2341,16 @@
                 if (sizeC > 1) coords.push(f.spp > 1 ? contig ? 0 : s : c);
                 if (sizeZ > 1) coords.push(z);
                 coords.push(Math.floor(j / across), j % across);
-                const range = { source: 0, offset: BigInt(offsets[k]), length: BigInt(counts[k]) };
-                entries.push({ key: `${li}/c/${coords.join("/")}`, ranges: [range] });
+                let ranges = [[offsets[k], counts[k]]];
+                if (prefix2 !== void 0) {
+                  if (counts[k] <= 2) reject3(`JPEG tile ${k} of the IFD at ${ifd.offset} is too short`);
+                  ranges = [prefix2, [offsets[k] + 2, counts[k] - 2]];
+                }
+                if (payloadSize(ranges) > MAX_PAYLOAD3) reject3(`tile ${k}'s reference payload exceeds ${MAX_PAYLOAD3} bytes`);
+                entries.push({
+                  key: `${li}/c/${coords.join("/")}`,
+                  ranges: ranges.map((r) => r instanceof Uint8Array ? { data: r } : { source: 0, offset: BigInt(r[0]), length: BigInt(r[1]) })
+                });
                 references++;
               }
             }
