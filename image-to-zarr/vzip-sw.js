@@ -666,12 +666,12 @@
   function le(fields2) {
     const size = fields2.reduce((n, [, w]) => n + w, 0);
     const out = new Uint8Array(size);
-    const view = new DataView(out.buffer);
+    const view2 = new DataView(out.buffer);
     let at = 0;
     for (const [v, w] of fields2) {
-      if (w === 2) view.setUint16(at, v, true);
-      else if (w === 4) view.setUint32(at, v, true);
-      else view.setBigUint64(at, BigInt(v), true);
+      if (w === 2) view2.setUint16(at, v, true);
+      else if (w === 4) view2.setUint32(at, v, true);
+      else view2.setBigUint64(at, BigInt(v), true);
       at += w;
     }
     return out;
@@ -792,9 +792,9 @@
     }
     const comment = new Uint8Array(22);
     comment.set(utf82.encode("vzip/0"));
-    const view = new DataView(comment.buffer);
-    view.setBigUint64(6, BigInt(sources.offset + 30 + sources.name.length), true);
-    view.setBigUint64(14, BigInt(sources.body.length), true);
+    const view2 = new DataView(comment.buffer);
+    view2.setBigUint64(6, BigInt(sources.offset + 30 + sources.name.length), true);
+    view2.setBigUint64(14, BigInt(sources.body.length), true);
     out.push(
       le([
         [101010256, 4],
@@ -829,13 +829,13 @@
     }
     return Number(v);
   }
-  function parseExtra(extra, view, base) {
+  function parseExtra(extra, view2, base) {
     const blocks = [];
     let at = 0;
     while (at < extra.length) {
       if (at + 4 > extra.length) return void 0;
-      const id = view.getUint16(base + at, true);
-      const n = view.getUint16(base + at + 2, true);
+      const id = view2.getUint16(base + at, true);
+      const n = view2.getUint16(base + at + 2, true);
       if (at + 4 + n > extra.length) return void 0;
       blocks.push({ id, data: extra.subarray(at + 4, at + 4 + n) });
       at += 4 + n;
@@ -857,12 +857,12 @@
     }
     /** Opens an archive (spec §8.1); `baseUrl` resolves relative `url` sources. */
     static async open(bytes, baseUrl, fetchRange = (url, start, end, pins) => readHttpRange(url, start, end, pins)) {
-      const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+      const view2 = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
       const n = bytes.length;
       let eocd = -1;
       for (const commentLength of [38, 22]) {
         const at2 = n - 22 - commentLength;
-        if (at2 >= 0 && view.getUint32(at2, true) === 101010256 && view.getUint16(at2 + 20, true) === commentLength) {
+        if (at2 >= 0 && view2.getUint32(at2, true) === 101010256 && view2.getUint16(at2 + 20, true) === commentLength) {
           eocd = at2;
           break;
         }
@@ -876,21 +876,21 @@
       if (magic !== "vzip/0") {
         throw new VzipError("archive", `unsupported version ${magic}`);
       }
-      let count = BigInt(view.getUint16(eocd + 10, true));
-      let cdSize = BigInt(view.getUint32(eocd + 12, true));
-      let cdOffset = BigInt(view.getUint32(eocd + 16, true));
-      if (view.getUint16(eocd + 8, true) === U16_ALL2 || count === BigInt(U16_ALL2) || cdSize === BigInt(U32_ALL2) || cdOffset === BigInt(U32_ALL2)) {
+      let count = BigInt(view2.getUint16(eocd + 10, true));
+      let cdSize = BigInt(view2.getUint32(eocd + 12, true));
+      let cdOffset = BigInt(view2.getUint32(eocd + 16, true));
+      if (view2.getUint16(eocd + 8, true) === U16_ALL2 || count === BigInt(U16_ALL2) || cdSize === BigInt(U32_ALL2) || cdOffset === BigInt(U32_ALL2)) {
         const loc = eocd - 20;
-        if (loc < 0 || view.getUint32(loc, true) !== 117853008) {
+        if (loc < 0 || view2.getUint32(loc, true) !== 117853008) {
           throw new VzipError("archive", "missing zip64 locator");
         }
-        const at2 = safe(view.getBigUint64(loc + 8, true), "zip64 record offset");
-        if (at2 + 56 > n || view.getUint32(at2, true) !== 101075792 || view.getBigUint64(at2 + 4, true) !== 44n) {
+        const at2 = safe(view2.getBigUint64(loc + 8, true), "zip64 record offset");
+        if (at2 + 56 > n || view2.getUint32(at2, true) !== 101075792 || view2.getBigUint64(at2 + 4, true) !== 44n) {
           throw new VzipError("archive", "invalid zip64 end of central directory");
         }
-        count = view.getBigUint64(at2 + 32, true);
-        cdSize = view.getBigUint64(at2 + 40, true);
-        cdOffset = view.getBigUint64(at2 + 48, true);
+        count = view2.getBigUint64(at2 + 32, true);
+        cdSize = view2.getBigUint64(at2 + 40, true);
+        cdOffset = view2.getBigUint64(at2 + 48, true);
       }
       void count;
       const cdStart = safe(cdOffset, "central directory offset");
@@ -899,17 +899,17 @@
       const entries = /* @__PURE__ */ new Map();
       let at = cdStart;
       while (at < cdEnd) {
-        if (at + 46 > cdEnd || view.getUint32(at, true) !== 33639248) {
+        if (at + 46 > cdEnd || view2.getUint32(at, true) !== 33639248) {
           throw new VzipError("archive", `bad central directory record at ${at}`);
         }
-        const flags = view.getUint16(at + 8, true);
-        const method = view.getUint16(at + 10, true);
-        const csize = view.getUint32(at + 20, true);
-        const size = view.getUint32(at + 24, true);
-        const nameLen = view.getUint16(at + 28, true);
-        const extraLen = view.getUint16(at + 30, true);
-        const commentLen = view.getUint16(at + 32, true);
-        let offset = view.getUint32(at + 42, true);
+        const flags = view2.getUint16(at + 8, true);
+        const method = view2.getUint16(at + 10, true);
+        const csize = view2.getUint32(at + 20, true);
+        const size = view2.getUint32(at + 24, true);
+        const nameLen = view2.getUint16(at + 28, true);
+        const extraLen = view2.getUint16(at + 30, true);
+        const commentLen = view2.getUint16(at + 32, true);
+        let offset = view2.getUint32(at + 42, true);
         const end = at + 46 + nameLen + extraLen + commentLen;
         if (end > cdEnd) throw new VzipError("archive", "truncated central directory");
         const nameBytes = bytes.subarray(at + 46, at + 46 + nameLen);
@@ -926,7 +926,7 @@
         if (entries.has(key)) throw new VzipError("archive", `duplicate key ${key}`);
         const entry = { key, method, csize, size, bodyOffset: 0 };
         entries.set(key, entry);
-        const blocks = parseExtra(extra, view, extraStart);
+        const blocks = parseExtra(extra, view2, extraStart);
         const refs = blocks?.filter((b) => b.id === RANGE_ID || b.id === CONCAT_ID) ?? [];
         const zip64 = blocks?.filter((b) => b.id === 1) ?? [];
         if (blocks === void 0) entry.error = "unparseable extra field";
@@ -1792,43 +1792,43 @@
       return out;
     };
   }
-  function u64(view, at, le2) {
-    const v = view.getBigUint64(at, le2);
+  function u64(view2, at, le2) {
+    const v = view2.getBigUint64(at, le2);
     if (v > BigInt(Number.MAX_SAFE_INTEGER)) throw new TiffError("offset too large");
     return Number(v);
   }
   function values(bytes, type, count, le2, tag = 0) {
-    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const view2 = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
     if (type === 2 || tag === Tag.JPEGTables) return bytes.slice();
     const out = [];
     for (let i = 0; i < count; i++) {
       switch (type) {
         case 1:
         case 7:
-          out.push(view.getUint8(i));
+          out.push(view2.getUint8(i));
           break;
         case 6:
-          out.push(view.getInt8(i));
+          out.push(view2.getInt8(i));
           break;
         case 3:
-          out.push(view.getUint16(2 * i, le2));
+          out.push(view2.getUint16(2 * i, le2));
           break;
         case 8:
-          out.push(view.getInt16(2 * i, le2));
+          out.push(view2.getInt16(2 * i, le2));
           break;
         case 4:
         case 13:
-          out.push(view.getUint32(4 * i, le2));
+          out.push(view2.getUint32(4 * i, le2));
           break;
         case 9:
-          out.push(view.getInt32(4 * i, le2));
+          out.push(view2.getInt32(4 * i, le2));
           break;
         case 16:
         case 18:
-          out.push(u64(view, 8 * i, le2));
+          out.push(u64(view2, 8 * i, le2));
           break;
         case 17: {
-          const v = view.getBigInt64(8 * i, le2);
+          const v = view2.getBigInt64(8 * i, le2);
           if (v > BigInt(Number.MAX_SAFE_INTEGER) || v < -BigInt(Number.MAX_SAFE_INTEGER)) {
             throw new TiffError("a tag value is more than 2^53 - 1");
           }
@@ -1836,16 +1836,16 @@
           break;
         }
         case 11:
-          out.push(view.getFloat32(4 * i, le2));
+          out.push(view2.getFloat32(4 * i, le2));
           break;
         case 12:
-          out.push(view.getFloat64(8 * i, le2));
+          out.push(view2.getFloat64(8 * i, le2));
           break;
         case 5:
-          out.push(view.getUint32(8 * i, le2) / view.getUint32(8 * i + 4, le2));
+          out.push(view2.getUint32(8 * i, le2) / view2.getUint32(8 * i + 4, le2));
           break;
         case 10:
-          out.push(view.getInt32(8 * i, le2) / view.getInt32(8 * i + 4, le2));
+          out.push(view2.getInt32(8 * i, le2) / view2.getInt32(8 * i + 4, le2));
           break;
         default:
           throw new TiffError(`unknown field type ${type}`);
@@ -1888,16 +1888,16 @@
       const cview = new DataView(cbytes.buffer, cbytes.byteOffset, cbytes.byteLength);
       const count = bigTiff ? u64(cview, 0, le2) : cview.getUint16(0, le2);
       const body = await read(offset + countSize, count * entrySize + fieldSize);
-      const view = new DataView(body.buffer, body.byteOffset, body.byteLength);
+      const view2 = new DataView(body.buffer, body.byteOffset, body.byteLength);
       const tags = /* @__PURE__ */ new Map();
       const types = /* @__PURE__ */ new Map();
       const pending = [];
       for (let i = 0; i < count; i++) {
         const at = i * entrySize;
-        const tag = view.getUint16(at, le2);
+        const tag = view2.getUint16(at, le2);
         if (!WANTED.has(tag) || types.has(tag)) continue;
-        const type = view.getUint16(at + 2, le2);
-        const n = bigTiff ? u64(view, at + 4, le2) : view.getUint32(at + 4, le2);
+        const type = view2.getUint16(at + 2, le2);
+        const n = bigTiff ? u64(view2, at + 4, le2) : view2.getUint32(at + 4, le2);
         const size = TYPE_SIZE[type];
         const allowed = tag === Tag.ImageDescription ? size !== void 0 : tag === Tag.JPEGTables ? type === 1 || type === 7 : INTEGER_TYPES.has(type);
         if (!allowed) {
@@ -1909,7 +1909,7 @@
           types.set(tag, type);
           tags.set(tag, values(body.subarray(valueAt, valueAt + n * size), type, n, le2, tag));
         } else {
-          const where = bigTiff ? u64(view, valueAt, le2) : view.getUint32(valueAt, le2);
+          const where = bigTiff ? u64(view2, valueAt, le2) : view2.getUint32(valueAt, le2);
           types.set(tag, type);
           pending.push(
             read(where, n * size).then((b) => {
@@ -1920,7 +1920,7 @@
       }
       await Promise.all(pending);
       const nextAt = count * entrySize;
-      const next = bigTiff ? Number(view.getBigUint64(nextAt, le2)) : view.getUint32(nextAt, le2);
+      const next = bigTiff ? Number(view2.getBigUint64(nextAt, le2)) : view2.getUint32(nextAt, le2);
       return { ifd: { offset, tags, types, subIfds: [] }, next };
     }
     const ifds = [];
@@ -1952,10 +1952,321 @@
     return v;
   }
 
+  // src/ndpi.ts
+  var MAX_IFDS = 1e5;
+  var MAX_PAYLOAD3 = 65519;
+  var CHUNK = 1024;
+  var SIZES = {
+    1: 1,
+    2: 1,
+    3: 2,
+    4: 4,
+    5: 8,
+    6: 1,
+    7: 1,
+    8: 2,
+    9: 4,
+    10: 8,
+    11: 4,
+    12: 8,
+    13: 4,
+    16: 8,
+    17: 8,
+    18: 8
+  };
+  var INTEGER = /* @__PURE__ */ new Set([1, 3, 4, 13, 16, 18]);
+  var TAGS = {
+    256: [INTEGER, true],
+    257: [INTEGER, true],
+    258: [INTEGER, false],
+    259: [INTEGER, true],
+    262: [INTEGER, true],
+    277: [INTEGER, true],
+    273: [INTEGER, true],
+    279: [INTEGER, true],
+    282: [/* @__PURE__ */ new Set([5]), true],
+    283: [/* @__PURE__ */ new Set([5]), true],
+    296: [INTEGER, true],
+    65420: [INTEGER, true],
+    65421: [/* @__PURE__ */ new Set([11, 12]), true],
+    65426: [INTEGER, false],
+    65432: [INTEGER, false]
+  };
+  var reject3 = (message) => {
+    throw new TiffError(message);
+  };
+  var view = (b) => new DataView(b.buffer, b.byteOffset, b.byteLength);
+  var u642 = (v, at) => {
+    const x = v.getBigUint64(at, true);
+    return x > BigInt(Number.MAX_SAFE_INTEGER) ? reject3("an NDPI offset is above 2^53 - 1") : Number(x);
+  };
+  async function detectNdpi(read, size) {
+    if (size < 12) return void 0;
+    const head = await read(0, 12);
+    if (String.fromCharCode(...head.subarray(0, 4)) !== "II*\0") return void 0;
+    const v = Number(view(head).getBigUint64(4, true));
+    if (v < 16 || v + 2 > size) return void 0;
+    const n = view(await read(v, 2)).getUint16(0, true);
+    if (v + 2 + 12 * n > size) return void 0;
+    const entries = view(await read(v + 2, 12 * n));
+    for (let i = 0; i < n; i++) if (entries.getUint16(12 * i, true) === 65420) return v;
+    return void 0;
+  }
+  async function readIfds(read, first) {
+    const seen = /* @__PURE__ */ new Set();
+    const ifds = [];
+    for (let offset = first; offset !== 0; ) {
+      if (offset < 16) reject3(`IFD offset ${offset} is not in the file`);
+      if (seen.has(offset)) reject3(`IFD offset ${offset} read twice`);
+      if (seen.size >= MAX_IFDS) reject3("too many IFDs");
+      seen.add(offset);
+      const n = view(await read(offset, 2)).getUint16(0, true);
+      const body = await read(offset + 2, 12 * n + 8 + 4 * n);
+      const b = view(body);
+      const tags = /* @__PURE__ */ new Map();
+      for (let i = 0; i < n; i++) {
+        const tag = b.getUint16(12 * i, true);
+        if (!(tag in TAGS) || tags.has(tag)) continue;
+        const type = b.getUint16(12 * i + 2, true);
+        const count = b.getUint32(12 * i + 4, true);
+        const [allowed, scalar] = TAGS[tag];
+        if (!allowed.has(type)) reject3(`tag ${tag} has field type ${type}`);
+        if (scalar && count === 0) reject3(`tag ${tag} has no value`);
+        const low = b.getUint32(12 * i + 8, true);
+        const high = b.getUint32(12 * n + 8 + 4 * i, true);
+        const nbytes = count * SIZES[type];
+        let values2;
+        if (nbytes <= 4) {
+          values2 = count === 1 && (type === 4 || type === 13) ? [low + high * 2 ** 32] : decode(body.subarray(12 * i + 8, 12 * i + 8 + nbytes), type, count);
+        } else {
+          values2 = decode(await read(low + high * 2 ** 32, nbytes), type, count);
+        }
+        if (INTEGER.has(type) && values2.some((v) => v > Number.MAX_SAFE_INTEGER)) {
+          reject3(`tag ${tag} has a value above 2^53 - 1`);
+        }
+        tags.set(tag, values2);
+      }
+      ifds.push(tags);
+      offset = u642(b, 12 * n);
+    }
+    if (ifds.length === 0) reject3("no images");
+    return ifds;
+  }
+  function decode(bytes, type, count) {
+    const v = view(bytes);
+    if (type === 5) return Array.from({ length: count }, (_, i) => [v.getUint32(8 * i, true), v.getUint32(8 * i + 4, true)]);
+    return Array.from({ length: count }, (_, i) => {
+      switch (type) {
+        case 1:
+          return v.getUint8(i);
+        case 3:
+          return v.getUint16(2 * i, true);
+        case 4:
+        case 13:
+          return v.getUint32(4 * i, true);
+        case 11:
+          return v.getFloat32(4 * i, true);
+        case 12:
+          return v.getFloat64(8 * i, true);
+        default:
+          return Number(v.getBigUint64(8 * i, true));
+      }
+    });
+  }
+  function one(tags, tag, what, fallback) {
+    const v = tags.get(tag);
+    if (v === void 0) return fallback ?? reject3(`an NDPI image has no ${what}`);
+    return v[0];
+  }
+  function jpegHeader(header2) {
+    if (header2[0] !== 255 || header2[1] !== 216) reject3("an NDPI strip does not start with a JPEG SOI marker");
+    const v = view(header2);
+    let pos = 2;
+    let sof;
+    let dri;
+    for (; ; ) {
+      if (pos + 4 > header2.length || header2[pos] !== 255) reject3("malformed JPEG header in an NDPI strip");
+      const marker = header2[pos + 1];
+      const length = v.getUint16(pos + 2);
+      const end = pos + 2 + length;
+      if (length < 2 || end > header2.length) reject3("malformed JPEG header in an NDPI strip");
+      if (marker === 192) {
+        if (sof !== void 0) reject3("an NDPI strip has two SOF0 segments");
+        sof = [pos, end];
+      } else if (marker >= 193 && marker <= 207 && marker !== 196 && marker !== 200 && marker !== 204) {
+        reject3(`an NDPI strip is not baseline JPEG (marker FF${marker.toString(16).toUpperCase()})`);
+      } else if (marker === 221) {
+        if (length !== 4) reject3("malformed DRI segment in an NDPI strip");
+        dri = v.getUint16(pos + 4);
+      } else if (marker === 218) {
+        if (end !== header2.length) reject3("an NDPI strip's SOS does not end at McuStarts[0]");
+        break;
+      }
+      pos = end;
+    }
+    if (sof === void 0 || !dri) return reject3("an NDPI strip has no SOF0 or no restart interval");
+    const seg = header2.subarray(sof[0], sof[1]);
+    const nf = seg.length > 9 ? seg[9] : 0;
+    if (nf === 0 || seg.length !== 10 + 3 * nf) reject3("malformed SOF0 segment in an NDPI strip");
+    let horizontal = 0;
+    let vertical = 0;
+    for (let k = 0; k < nf; k++) {
+      horizontal = Math.max(horizontal, seg[11 + 3 * k] >> 4);
+      vertical = Math.max(vertical, seg[11 + 3 * k] & 15);
+    }
+    if (horizontal === 0 || vertical === 0) reject3("an NDPI strip has a sampling factor of 0");
+    return [sof[0], sof[1], 8 * horizontal, 8 * vertical, dri];
+  }
+  async function virtualizeNdpi(url, read, size, first) {
+    const ifds = await readIfds(read, first);
+    const levels = [];
+    for (const tags of ifds) {
+      const mag = one(tags, 65421, "Magnification");
+      if (!(mag > 0)) continue;
+      const w = one(tags, 256, "ImageWidth");
+      const h = one(tags, 257, "ImageLength");
+      const bits = tags.get(258);
+      if (one(tags, 259, "Compression", 1) !== 7 || one(tags, 262, "PhotometricInterpretation") !== 6 || one(tags, 277, "SamplesPerPixel", 1) !== 3 || !bits?.length || bits.some((b) => b !== 8)) {
+        reject3("an NDPI level is not 8-bit YCbCr JPEG with 3 samples");
+      }
+      if (tags.get(273)?.length !== 1 || tags.get(279)?.length !== 1) reject3("an NDPI level does not have exactly one strip");
+      const last = levels[levels.length - 1];
+      if (last && !(w < last.w && h < last.h)) reject3("NDPI levels do not decrease in size");
+      if (levels.some((l) => l.mag === mag)) reject3("NDPI focal planes (two levels with one magnification) are not supported");
+      if (Math.min(w, h) < 1) reject3("an NDPI level is empty");
+      levels.push({ mag, w, h, tags });
+    }
+    if (levels.length === 0) reject3("no NDPI levels");
+    const base = levels[0];
+    const perUnit = { 3: 1e4, 2: 25400 }[one(base.tags, 296, "ResolutionUnit", 2)];
+    const physical2 = (tag) => {
+      const r = base.tags.get(tag)?.[0];
+      return perUnit === void 0 || r === void 0 || r[0] === 0 || r[1] === 0 ? void 0 : perUnit / (r[0] / r[1]);
+    };
+    const px = physical2(282);
+    const py = physical2(283);
+    const axes = ["c", "y", "x"];
+    const codecs = [{ name: "transpose", configuration: { order: [1, 2, 0] } }, { name: "imagecodecs_jpeg" }];
+    const utf83 = new TextEncoder();
+    const json = (v) => utf83.encode(JSON.stringify(v, null, 2));
+    const entries = [];
+    const datasets = [];
+    for (const [li, level2] of levels.entries()) {
+      const s0 = one(level2.tags, 273, "StripOffsets");
+      const n = one(level2.tags, 279, "StripByteCounts");
+      if (s0 + n > size || n < 4) reject3("an NDPI strip is outside the file");
+      let chunk;
+      const refs = [];
+      const starts = level2.tags.get(65426);
+      if (starts === void 0) {
+        chunk = [3, level2.h, level2.w];
+        refs.push([`${li}/c/0/0/0`, [[s0, n]]]);
+      } else {
+        chunk = await intervals(refs, li, read, level2.tags, starts, s0, n, level2.w, level2.h);
+      }
+      for (const [key, parts] of refs) {
+        entries.push({
+          key,
+          ranges: parts.map((p) => p instanceof Uint8Array ? { data: p } : { source: 0, offset: BigInt(p[0]), length: BigInt(p[1]) })
+        });
+      }
+      entries.push({
+        key: `${li}/zarr.json`,
+        bytes: json({
+          zarr_format: 3,
+          node_type: "array",
+          shape: [3, level2.h, level2.w],
+          data_type: "uint8",
+          chunk_grid: { name: "regular", configuration: { chunk_shape: chunk } },
+          chunk_key_encoding: { name: "default", configuration: { separator: "/" } },
+          fill_value: 0,
+          codecs,
+          dimension_names: axes,
+          attributes: {}
+        })
+      });
+      datasets.push({
+        path: String(li),
+        coordinateTransformations: [{ type: "scale", scale: [1, (py ?? 1) * (base.h / level2.h), (px ?? 1) * (base.w / level2.w)] }]
+      });
+    }
+    const unit = (p) => p === void 0 ? {} : { unit: "micrometer" };
+    entries.push({
+      key: "zarr.json",
+      bytes: json({
+        zarr_format: 3,
+        node_type: "group",
+        attributes: {
+          ome: {
+            version: "0.5",
+            multiscales: [{
+              axes: [{ name: "c", type: "channel" }, { name: "y", type: "space", ...unit(py) }, { name: "x", type: "space", ...unit(px) }],
+              datasets
+            }]
+          }
+        }
+      })
+    });
+    return {
+      sources: [{ url }],
+      entries,
+      summary: { axes, levels: levels.map((l) => [3, l.h, l.w]), references: entries.length - levels.length - 1, codec: "imagecodecs_jpeg" }
+    };
+  }
+  async function intervals(refs, li, read, tags, startsLow, s0, n, w, h) {
+    const high = tags.get(65432);
+    if (high !== void 0 && high.length !== startsLow.length) reject3("McuStartsHighBytes and McuStarts differ in length");
+    const starts = high === void 0 ? startsLow : startsLow.map((s, i) => s + high[i] * 2 ** 32);
+    if (starts.length === 0 || starts[0] < 2 || starts[0] > n) reject3("McuStarts[0] is outside the strip");
+    const header2 = await read(s0, starts[0]);
+    const [sofStart, sofEnd, mw, mh, interval] = jpegHeader(header2);
+    const q = Math.ceil(w / (interval * mw));
+    const r = Math.ceil(h / mh);
+    if (starts.length !== q * r || starts[starts.length - 1] >= n || starts.some((s, i) => i > 0 && s <= starts[i - 1])) {
+      reject3("McuStarts does not match the strip's intervals");
+    }
+    const ends = starts.map((_, i) => (i + 1 < starts.length ? starts[i + 1] : n) - 2);
+    if (starts.some((s, i) => ends[i] <= s)) reject3("an NDPI restart interval is empty");
+    const a = Math.min(q, Math.max(1, Math.floor(CHUNK / (interval * mw))));
+    const sof = header2.slice(sofStart, sofEnd);
+    const chunks = (b2) => {
+      const s = sof.slice();
+      view(s).setUint16(5, b2 * mh);
+      view(s).setUint16(7, a * interval * mw);
+      const head = [[s0, sofStart], s, [s0 + sofEnd, starts[0] - sofEnd]];
+      const out = [];
+      for (let u = 0; u < Math.ceil(r / b2); u++) {
+        for (let v = 0; v < Math.ceil(q / a); v++) {
+          const parts = [...head];
+          let t = 0;
+          for (let y = 0; y < b2; y++) {
+            for (let x = 0; x < a; x++) {
+              const i = Math.min(u * b2 + y, r - 1) * q + Math.min(v * a + x, q - 1);
+              if (t) parts.push(Uint8Array.of(255, 208 + (t - 1) % 8));
+              parts.push([s0 + starts[i], ends[i] - starts[i]]);
+              t++;
+            }
+          }
+          parts.push(Uint8Array.of(255, 217));
+          out.push([u, v, parts]);
+        }
+      }
+      return out;
+    };
+    let b = Math.max(1, Math.min(r, Math.floor(CHUNK / mh)));
+    let all = chunks(b);
+    while (b > 1 && all.some(([, , parts]) => payloadSize(parts) > MAX_PAYLOAD3)) all = chunks(--b);
+    for (const [u, v, parts] of all) {
+      if (payloadSize(parts) > MAX_PAYLOAD3) reject3(`an NDPI chunk's reference payload exceeds ${MAX_PAYLOAD3} bytes`);
+      refs.push([`${li}/c/0/${u}/${v}`, parts]);
+    }
+    return [3, b * mh, a * interval * mw];
+  }
+
   // src/virtualize.ts
   var JPEG2000 = /* @__PURE__ */ new Set([33003, 33004, 33005, 34712]);
   var JPEG = 7;
-  var MAX_PAYLOAD3 = 65519;
+  var MAX_PAYLOAD4 = 65519;
   var ADOBE = [255, 238, 0, 14, 65, 100, 111, 98, 101, 0, 100, 0, 0, 0, 0];
   function jpegPrefix(ifd, spp, photometric) {
     const out = [255, 216];
@@ -1964,13 +2275,13 @@
     if (tables !== void 0) {
       const n = tables.length;
       if (n < 4 || tables[0] !== 255 || tables[1] !== 216 || tables[n - 2] !== 255 || tables[n - 1] !== 217) {
-        reject3(`the IFD at ${ifd.offset} has malformed JPEGTables`);
+        reject4(`the IFD at ${ifd.offset} has malformed JPEGTables`);
       }
       out.push(...tables.subarray(2, n - 2));
     }
     return Uint8Array.from(out);
   }
-  var reject3 = (message) => {
+  var reject4 = (message) => {
     throw new TiffError(message);
   };
   var WS = "[ \\t\\r\\n]";
@@ -2059,10 +2370,10 @@
     const v = attrs[key];
     if (v === void 0) return fallback;
     const s = v.replace(/^[ \t\r\n]+|[ \t\r\n]+$/g, "");
-    if (!/^[0-9]+$/.test(s)) reject3(`${key}="${v}" is not an integer`);
+    if (!/^[0-9]+$/.test(s)) reject4(`${key}="${v}" is not an integer`);
     const n = Number(s);
-    if (!Number.isSafeInteger(n)) reject3(`${key}="${v}" is not an integer`);
-    if (n < minimum) reject3(`${key}="${v}" is less than ${minimum}`);
+    if (!Number.isSafeInteger(n)) reject4(`${key}="${v}" is not an integer`);
+    if (n < minimum) reject4(`${key}="${v}" is less than ${minimum}`);
     return n;
   }
   function physical(attrs, d) {
@@ -2092,16 +2403,16 @@
   function format(ifd) {
     const bits = nums(ifd, Tag.BitsPerSample);
     if (bits.length === 0 || bits.some((b) => b !== bits[0]) || bits[0] < 1) {
-      reject3("BitsPerSample values are missing, differ or are 0");
+      reject4("BitsPerSample values are missing, differ or are 0");
     }
     const formats = ifd.tags.get(Tag.SampleFormat) ?? [1];
     if (formats.length === 0 || formats.some((f) => f !== formats[0])) {
-      reject3("SampleFormat values are missing or differ");
+      reject4("SampleFormat values are missing or differ");
     }
     const spp = num(ifd, Tag.SamplesPerPixel, 1);
-    if (spp < 1) reject3("SamplesPerPixel is 0");
+    if (spp < 1) reject4("SamplesPerPixel is 0");
     const planar = spp > 1 ? num(ifd, Tag.PlanarConfiguration, 1) : 1;
-    if (planar !== 1 && planar !== 2) reject3(`PlanarConfiguration ${planar}`);
+    if (planar !== 1 && planar !== 2) reject4(`PlanarConfiguration ${planar}`);
     return {
       bits: bits[0],
       spp,
@@ -2116,11 +2427,11 @@
   var sameFormat = (a, b) => JSON.stringify(format(a)) === JSON.stringify(format(b));
   var tiled = (ifd) => ifd.tags.has(Tag.TileWidth) && ifd.tags.has(Tag.TileOffsets);
   function checkSize(ifd) {
-    if (num(ifd, Tag.ImageWidth) < 1 || num(ifd, Tag.ImageLength) < 1) reject3(`the image at ${ifd.offset} is empty`);
+    if (num(ifd, Tag.ImageWidth) < 1 || num(ifd, Tag.ImageLength) < 1) reject4(`the image at ${ifd.offset} is empty`);
     if (tiled(ifd)) {
       nums(ifd, Tag.TileByteCounts);
       if (num(ifd, Tag.TileWidth) < 1 || num(ifd, Tag.TileLength) < 1) {
-        reject3(`the image at ${ifd.offset} has an empty tile size`);
+        reject4(`the image at ${ifd.offset} has an empty tile size`);
       }
     }
   }
@@ -2132,7 +2443,7 @@
     const [first] = ifds;
     const stripped = ifds.find((i) => !tiled(i));
     if (stripped !== void 0) {
-      reject3(`only tiled TIFFs are supported; the image at ${stripped.offset} is stored in strips`);
+      reject4(`only tiled TIFFs are supported; the image at ${stripped.offset} is stored in strips`);
     }
     const l = {
       width: num(first, Tag.ImageWidth),
@@ -2143,7 +2454,7 @@
     };
     for (const ifd of ifds) {
       if (num(ifd, Tag.ImageWidth) !== l.width || num(ifd, Tag.ImageLength) !== l.height || num(ifd, Tag.TileWidth) !== l.tileWidth || num(ifd, Tag.TileLength) !== l.tileHeight || !sameFormat(ifd, first)) {
-        reject3("planes of one pyramid level differ in size, tiling or format");
+        reject4("planes of one pyramid level differ in size, tiling or format");
       }
     }
     return l;
@@ -2151,14 +2462,14 @@
   function dtype(bits, sampleFormat) {
     const kind = { 1: "uint", 2: "int", 3: "float" }[sampleFormat];
     if (kind === void 0 || ![8, 16, 32, 64].includes(bits) || kind === "float" && bits < 32) {
-      reject3(`unsupported sample type: ${bits}-bit, SampleFormat ${sampleFormat}`);
+      reject4(`unsupported sample type: ${bits}-bit, SampleFormat ${sampleFormat}`);
     }
     return `${kind}${bits}`;
   }
   async function virtualizeTiff(url, read, fileSize) {
     const tiff = await readTiff(read, fileSize);
     const [ifd0] = tiff.ifds;
-    if (ifd0 === void 0) reject3("no images");
+    if (ifd0 === void 0) reject4("no images");
     const description = ifd0.tags.get(Tag.ImageDescription);
     let raw;
     let ome;
@@ -2177,20 +2488,20 @@
       }
     }
     const f = format(ifd0);
-    if (!JPEG2000.has(f.compression) && f.predictor !== 1) reject3(`unsupported predictor ${f.predictor}`);
+    if (!JPEG2000.has(f.compression) && f.predictor !== 1) reject4(`unsupported predictor ${f.predictor}`);
     const px = ome?.pixels ?? {};
     const sizeZ = intAttr(px, "SizeZ", 1, 1);
     const sizeT = intAttr(px, "SizeT", 1, 1);
     let sizeC = intAttr(px, "SizeC", f.spp, 1);
     const order = px.DimensionOrder ?? "XYZCT";
-    if (ome && !/^XY(ZCT|ZTC|CZT|CTZ|TZC|TCZ)$/.test(order)) reject3(`DimensionOrder ${order}`);
+    if (ome && !/^XY(ZCT|ZTC|CZT|CTZ|TZC|TCZ)$/.test(order)) reject4(`DimensionOrder ${order}`);
     if (f.spp > 1 && sizeC !== f.spp) {
       if (sizeC === 1) sizeC = f.spp;
-      else reject3(`SizeC ${sizeC} with ${f.spp} samples per pixel is not supported`);
+      else reject4(`SizeC ${sizeC} with ${f.spp} samples per pixel is not supported`);
     }
     const planeC = f.spp > 1 ? 1 : sizeC;
     const plane = (t, c, z) => (t * planeC + c) * sizeZ + z;
-    if (sizeT * planeC * sizeZ > 1e5) reject3(`${sizeT * planeC * sizeZ} planes is more than 100000`);
+    if (sizeT * planeC * sizeZ > 1e5) reject4(`${sizeT * planeC * sizeZ} planes is more than 100000`);
     const planeIfd = new Array(sizeT * planeC * sizeZ).fill(-1);
     if (ome === void 0) {
       planeIfd[0] = 0;
@@ -2198,11 +2509,11 @@
       const size = { Z: sizeZ, C: planeC, T: sizeT };
       const entries2 = ome.tiffData.length > 0 ? ome.tiffData : [{ attrs: {} }];
       const files = new Set(entries2.flatMap((td) => td.uuid === void 0 ? [] : [td.uuid]));
-      if (files.size > 1) reject3("multi-file OME-TIFF is not supported");
+      if (files.size > 1) reject4("multi-file OME-TIFF is not supported");
       for (const td of entries2) {
         const a = td.attrs;
         const pos = { Z: intAttr(a, "FirstZ", 0), C: intAttr(a, "FirstC", 0), T: intAttr(a, "FirstT", 0) };
-        if ("ZCT".split("").some((d) => pos[d] >= size[d])) reject3("TiffData starts outside the planes");
+        if ("ZCT".split("").some((d) => pos[d] >= size[d])) reject4("TiffData starts outside the planes");
         let ifd = intAttr(a, "IFD", 0);
         let count = intAttr(a, "PlaneCount", entries2.length === 1 && a.IFD === void 0 ? planeIfd.length : 1, 1);
         while (count-- > 0) {
@@ -2219,13 +2530,13 @@
         }
       }
     }
-    if (planeIfd.some((i) => i < 0 || i >= tiff.ifds.length)) reject3("OME-XML planes do not match the TIFF's images");
+    if (planeIfd.some((i) => i < 0 || i >= tiff.ifds.length)) reject4("OME-XML planes do not match the TIFF's images");
     const planes = planeIfd.map((i) => tiff.ifds[i]);
     const levels = [];
     if (ifd0.subIfds.length > 0) {
       const s = ifd0.subIfds.length;
       for (const p of planes) {
-        if (p.subIfds.length < s) reject3(`the IFD at ${p.offset} has fewer SubIFDs than IFD 0`);
+        if (p.subIfds.length < s) reject4(`the IFD at ${p.offset} has fewer SubIFDs than IFD 0`);
       }
       for (let k = -1; k < s; k++) levels.push(level(planes.map((p) => k < 0 ? p : p.subIfds[k])));
     } else {
@@ -2242,7 +2553,7 @@
       }
     }
     for (const l of levels) {
-      if (!l.ifds.every((i) => sameFormat(i, ifd0))) reject3("pyramid levels differ in sample format or compression");
+      if (!l.ifds.every((i) => sameFormat(i, ifd0))) reject4("pyramid levels differ in sample format or compression");
     }
     const contig = f.spp > 1 && f.planar === 1;
     const axes = [];
@@ -2262,7 +2573,7 @@
       codecName = "imagecodecs_jpeg2k";
     } else if (f.compression === JPEG) {
       if (f.bits !== 8 || f.sampleFormat !== 1 || !(f.spp === 1 || f.spp === 3 && f.planar === 1 && (f.photometric === 2 || f.photometric === 6))) {
-        reject3(`unsupported JPEG: ${f.bits}-bit, ${f.spp} samples, planar ${f.planar}, photometric ${f.photometric}`);
+        reject4(`unsupported JPEG: ${f.bits}-bit, ${f.spp} samples, planar ${f.planar}, photometric ${f.photometric}`);
       }
       codecs = [{ name: "imagecodecs_jpeg" }];
       codecName = "imagecodecs_jpeg";
@@ -2278,7 +2589,7 @@
       } else if (f.compression === 1) {
         codecName = "bytes";
       } else {
-        return reject3(`unsupported compression ${f.compression}`);
+        return reject4(`unsupported compression ${f.compression}`);
       }
     }
     if (contig) {
@@ -2329,13 +2640,13 @@
             const prefix2 = f.compression === JPEG ? jpegPrefix(ifd, f.spp, f.photometric) : void 0;
             const samples = f.spp > 1 && !contig ? f.spp : 1;
             if (offsets.length !== samples * perSample || counts.length !== samples * perSample) {
-              reject3(`IFD at ${ifd.offset} has ${offsets.length} tiles, expected ${samples * perSample}`);
+              reject4(`IFD at ${ifd.offset} has ${offsets.length} tiles, expected ${samples * perSample}`);
             }
             for (let s = 0; s < samples; s++) {
               for (let j = 0; j < perSample; j++) {
                 const k = s * perSample + j;
                 if (counts[k] === 0) continue;
-                if (offsets[k] + counts[k] > fileSize) reject3(`tile ${k} of the IFD at ${ifd.offset} is outside the file`);
+                if (offsets[k] + counts[k] > fileSize) reject4(`tile ${k} of the IFD at ${ifd.offset} is outside the file`);
                 const coords = [];
                 if (sizeT > 1) coords.push(t);
                 if (sizeC > 1) coords.push(f.spp > 1 ? contig ? 0 : s : c);
@@ -2343,10 +2654,10 @@
                 coords.push(Math.floor(j / across), j % across);
                 let ranges = [[offsets[k], counts[k]]];
                 if (prefix2 !== void 0) {
-                  if (counts[k] <= 2) reject3(`JPEG tile ${k} of the IFD at ${ifd.offset} is too short`);
+                  if (counts[k] <= 2) reject4(`JPEG tile ${k} of the IFD at ${ifd.offset} is too short`);
                   ranges = [prefix2, [offsets[k] + 2, counts[k] - 2]];
                 }
-                if (payloadSize(ranges) > MAX_PAYLOAD3) reject3(`tile ${k}'s reference payload exceeds ${MAX_PAYLOAD3} bytes`);
+                if (payloadSize(ranges) > MAX_PAYLOAD4) reject4(`tile ${k}'s reference payload exceeds ${MAX_PAYLOAD4} bytes`);
                 entries.push({
                   key: `${li}/c/${coords.join("/")}`,
                   ranges: ranges.map((r) => r instanceof Uint8Array ? { data: r } : { source: 0, offset: BigInt(r[0]), length: BigInt(r[1]) })
@@ -2397,7 +2708,11 @@
   async function virtualizeImage(url, read, fileSize) {
     const head = await read(0, Math.min(8, fileSize));
     const order = String.fromCharCode(head[0], head[1]);
-    if (order === "II" || order === "MM") return { format: "tiff", ...await virtualizeTiff(url, read, fileSize) };
+    if (order === "II" || order === "MM") {
+      const first = await detectNdpi(read, fileSize);
+      if (first !== void 0) return { format: "ndpi", ...await virtualizeNdpi(url, read, fileSize, first) };
+      return { format: "tiff", ...await virtualizeTiff(url, read, fileSize) };
+    }
     if (isNd2(head)) return { format: "nd2", ...await virtualizeNd2(url, read, fileSize) };
     throw new ImageError("not a TIFF or ND2 file");
   }
