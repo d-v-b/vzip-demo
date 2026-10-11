@@ -1169,6 +1169,9 @@ var SHUFFLED = ["2", "2,1", "2,3", "2,1,3"];
 var REFERENCED = ["", "1", "3", "1,3"];
 var ALLOWED = [...REFERENCED, ...SHUFFLED];
 
+// src/virtualize/ims/virtualize.ts
+var MAX_COLOR_TABLE = 2 ** 18;
+
 // src/virtualize/ir/run.ts
 var utf85 = new TextEncoder();
 
@@ -1513,7 +1516,7 @@ var METERS = {
   inch: 0.0254,
   foot: 0.3048
 };
-function imageState(images, axes, scale, shape, chunks, dtype, omero = [], labels = []) {
+function imageState(images, axes, scale, shape, dtype, omero = [], labels = []) {
   let xi = axes.findIndex((a) => a.name === "x");
   let yi = axes.findIndex((a) => a.name === "y");
   if (xi < 0 || yi < 0) [yi, xi] = [axes.length - 2, axes.length - 1];
@@ -1543,7 +1546,7 @@ function imageState(images, axes, scale, shape, chunks, dtype, omero = [], label
   };
   const many = images.length > 1;
   const c = axes.findIndex((a) => a.name === "c");
-  if (c >= 0 && shape[c] > 1 && shape[c] <= 16 && chunks[c] === shape[c]) {
+  if (c >= 0 && shape[c] > 1 && shape[c] <= MAX_CHANNELS) {
     const outputDimensions = Object.fromEntries(
       axes.map((a) => a.name === "c" ? ["c^", [1, ""]] : [a.name, dimensions[a.name]])
     );
@@ -1561,61 +1564,15 @@ function imageState(images, axes, scale, shape, chunks, dtype, omero = [], label
       ...view
     };
   }
-  const perChannel = (label, i, shader) => images.map((img) => ({
-    type: "image",
-    source: `${img.url}|zarr3:`,
-    name: many ? `${img.name} ${label}` : label,
-    opacity: 1,
-    blend: "additive",
-    localDimensions: { "c'": [1, ""] },
-    localPosition: [i],
-    shader
-  }));
-  if (c >= 0 && shape[c] === 3 && dtype === "uint8") {
-    const colors = ["v, 0.0, 0.0", "0.0, v, 0.0", "0.0, 0.0, v"];
-    return {
-      layers: colors.flatMap((rgb, i) => perChannel(
-        ["red", "green", "blue"][i],
-        i,
-        `void main() {
-  float v = toNormalized(getDataValue());
-  emitRGB(vec3(${rgb}));
-}
-`
-      )),
-      crossSectionBackgroundColor: "#000000",
-      ...view
-    };
-  }
-  if (c >= 0 && shape[c] > 1 && shape[c] <= 8) {
-    const hex = (s) => [0, 2, 4].map((i) => (parseInt(s.slice(i, i + 2), 16) / 255).toFixed(3));
-    return {
-      layers: Array.from({ length: shape[c] }, (_, i) => {
-        const ch = omero[i] ?? {};
-        const [r, g, b] = hex(ch.color ?? "FFFFFF");
-        const range = ch.window ? `(range=[${ch.window.start}, ${ch.window.end}])` : "";
-        return perChannel(
-          ch.label ?? `channel ${i}`,
-          i,
-          `#uicontrol invlerp contrast${range}
-void main() {
-  emitRGB(vec3(${r}, ${g}, ${b}) * contrast());
-}
-`
-        );
-      }).flat(),
-      crossSectionBackgroundColor: "#000000",
-      ...view
-    };
-  }
   return {
     layers: images.map((img) => ({ type: "image", source: `${img.url}|zarr3:`, name: many ? img.name : "image" })),
     ...view
   };
 }
+var MAX_CHANNELS = 16;
 function neuroglancerState(...args) {
   const state = imageState(...args);
-  const labels = args[7] ?? [];
+  const labels = args[6] ?? [];
   state.layers.push(...labels.map((l) => ({
     type: "segmentation",
     source: `${l.url}|zarr3:`,
@@ -1724,7 +1681,7 @@ async function seriesViews(zarrUrl) {
   const key = (v) => {
     const m = v.levels[0].meta;
     const c = v.axes.findIndex((a) => a.name === "c");
-    return JSON.stringify([v.axes.map((a) => a.name), m.data_type, c < 0 ? 0 : m.shape[c], c < 0 ? 0 : chunkShapeOf(m)[c]]);
+    return JSON.stringify([v.axes.map((a) => a.name), m.data_type, c < 0 ? 0 : m.shape[c]]);
   };
   if (views2.some((v) => key(v) !== key(views2[0]))) {
     views2[0].note = `${views2.length} series of different axes, data types or channels: pick one.`;
@@ -1789,7 +1746,7 @@ async function showView(view) {
   let omero = view.omero;
   const c = view.axes.findIndex((a) => a.name === "c");
   const nc = c >= 0 ? level0.shape[c] : 0;
-  if (dataType !== "uint8" && nc > 1 && nc <= 16) {
+  if (dataType !== "uint8" && nc > 1 && nc <= MAX_CHANNELS) {
     const need = Array.from({ length: nc }, (_, k) => k).filter((k) => !usableWindow(omero[k]?.window, dataType));
     const ranges = need.length > 0 ? await sample(need) : [];
     omero = Array.from({ length: nc }, (_, k) => {
@@ -1805,7 +1762,6 @@ async function showView(view) {
     view.axes,
     view.scale,
     level0.shape,
-    chunkShapeOf(level0),
     dataType,
     omero,
     view.labels

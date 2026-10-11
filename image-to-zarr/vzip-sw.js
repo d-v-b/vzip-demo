@@ -1497,7 +1497,7 @@
     return { source, offset: BigInt(offset), length: BigInt(length2) };
   }
   var CONVENTION_KEY = "vzip_virtualized";
-  var REVISION = 24;
+  var REVISION = 25;
   var PROFILES = {
     tiff: ["48e9ac4e-1156-4a62-955e-20467d9c2700", 0, "TIFF"],
     ndpi: ["6cac71ef-dbb2-4acd-b60c-00389aa4238a", 0, "NDPI"],
@@ -5620,6 +5620,7 @@
   var MAX_DATASETS = 1e5;
   var MAX_CHANNELS = 64;
   var MAX_NAME = 256;
+  var MAX_COLOR_TABLE = 2 ** 18;
   var DECIMAL3 = /^[+-]?([0-9]+(\.[0-9]*)?|\.[0-9]+)([eE][+-]?[0-9]+)?$/;
   var DIGITS = /^[0-9]+$/;
   var TIMESTAMP = /^([0-9]{4})-([0-9]{2})-([0-9]{2}) ([0-9]{2}):([0-9]{2}):([0-9]{2})(?:\.([0-9]+))?$/;
@@ -5646,12 +5647,44 @@
     if (d === void 0) return void 0;
     const [datatype, data] = attributeValue(d);
     if (datatype.cls !== 3) reject5(`attribute ${name} is not a string`);
+    return decodeText2(data);
+  }
+  function decodeText2(data) {
     const raw = untilNul(data);
     try {
       return new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(raw);
     } catch {
       return latin13(raw);
     }
+  }
+  function optionalText(attrs, name) {
+    try {
+      return text(attrs, name);
+    } catch (e) {
+      if (e instanceof ImsError) return void 0;
+      throw e;
+    }
+  }
+  function integer2(s) {
+    if (s === void 0 || !DIGITS.test(trim(s))) return void 0;
+    const digits = trim(s).replace(/^0+/, "");
+    if (digits === "" || digits.length > 16) return void 0;
+    const v = Number(digits);
+    return v <= Number.MAX_SAFE_INTEGER ? v : void 0;
+  }
+  function unitRgb(values2) {
+    if (values2 === void 0 || !values2.every((v) => v >= 0 && v <= 1)) return void 0;
+    return values2.map((v) => Math.floor(v * 255 + 0.5).toString(16).toUpperCase().padStart(2, "0")).join("");
+  }
+  async function channelColor(attrs, tableText) {
+    const base = unitRgb(decimals(text(attrs, "Color"), 3));
+    const mode = optionalText(attrs, "ColorMode");
+    const tableFirst = mode !== void 0 && trim(mode) === "TableColor";
+    if (base !== void 0 && !tableFirst) return base;
+    const length2 = integer2(optionalText(attrs, "ColorTableLength"));
+    const table = length2 === void 0 ? void 0 : decimals(await tableText(), 3 * length2);
+    const top = table === void 0 ? void 0 : unitRgb(table.slice(-3));
+    return top ?? base ?? "FFFFFF";
   }
   function decimal(s) {
     if (s === void 0 || !DECIMAL3.test(trim(s))) return void 0;
@@ -5767,11 +5800,35 @@
     }
     const [dtype, endian, range] = type;
     const meta = root.has("DataSetInfo") ? await f.links(await follow(root, "DataSetInfo")) : /* @__PURE__ */ new Map();
-    const metaAttrs = async (name2) => {
-      if (!meta.has(name2)) return /* @__PURE__ */ new Map();
+    const metaGroup = async (name2) => {
+      if (!meta.has(name2)) return [/* @__PURE__ */ new Map(), /* @__PURE__ */ new Map()];
       const at = await f.follow(meta, name2);
-      await f.links(at);
-      return f.attributes(at);
+      const links = await f.links(at);
+      return [await f.attributes(at), links];
+    };
+    const metaAttrs = async (name2) => (await metaGroup(name2))[0];
+    const colorTable = async (attrs, links) => {
+      if (attrs.has("ColorTable")) return optionalText(attrs, "ColorTable");
+      if (!links.has("ColorTable")) return void 0;
+      try {
+        const ds = await f.dataset(await f.follow(links, "ColorTable"), true);
+        if (ds.datatype.cls !== 3 || ds.dims === null || ds.filters.length > 0) return void 0;
+        if (ds.layout !== "compact" && ds.layout !== "contiguous") return void 0;
+        const n = ds.dims.reduce((a, d) => a * d, ds.datatype.size);
+        if (n > MAX_COLOR_TABLE) return void 0;
+        let data;
+        if (ds.layout === "compact") {
+          data = ds.compact;
+          if (data.length !== n) return void 0;
+        } else {
+          if (ds.dataAddress === void 0 || ds.dataAddress + n > f.size) return void 0;
+          data = n > 0 ? await f.read(ds.dataAddress, n) : new Uint8Array(0);
+        }
+        return decodeText2(data);
+      } catch (e) {
+        if (e instanceof ImsError) return void 0;
+        throw e;
+      }
     };
     const image = await metaAttrs("Image");
     const extMin = [0, 1, 2].map((i) => decimal(text(image, `ExtMin${i}`)));
@@ -5782,11 +5839,10 @@
     if (name !== void 0 && bytes(name) > MAX_NAME) name = void 0;
     const labels = [], colors = [], ranges = [];
     for (let c = 0; c < (channels <= MAX_CHANNELS ? channels : 0); c++) {
-      const attrs = await metaAttrs(`Channel ${c}`);
+      const [attrs, links] = await metaGroup(`Channel ${c}`);
       const label = text(attrs, "Name");
       labels.push(label && bytes(label) <= MAX_NAME ? label : `Channel ${c}`);
-      const rgb = decimals(text(attrs, "Color"), 3);
-      colors.push(rgb !== void 0 && rgb.every((v) => v >= 0 && v <= 1) ? rgb.map((v) => Math.floor(v * 255 + 0.5).toString(16).toUpperCase().padStart(2, "0")).join("") : "FFFFFF");
+      colors.push(await channelColor(attrs, () => colorTable(attrs, links)));
       ranges.push(decimals(text(attrs, "ColorRange"), 2));
     }
     const timeAttrs = await metaAttrs("TimeInfo");
