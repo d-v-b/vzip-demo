@@ -29,13 +29,13 @@ var InflateLimitError = class extends Error {
 };
 async function transform(data, stream) {
   const out2 = new Response(
-    new Blob([data]).stream().pipeThrough(stream)
+    new Response(data).body.pipeThrough(stream)
   );
   return new Uint8Array(await out2.arrayBuffer());
 }
 async function inflateRaw(data, limit) {
   if (limit === void 0) return transform(data, new DecompressionStream("deflate-raw"));
-  const reader = new Blob([data]).stream().pipeThrough(new DecompressionStream("deflate-raw")).getReader();
+  const reader = new Response(data).body.pipeThrough(new DecompressionStream("deflate-raw")).getReader();
   const chunks = [];
   let n = 0;
   for (; ; ) {

@@ -36,7 +36,7 @@
   };
   async function transform(data, stream) {
     const out2 = new Response(
-      new Blob([data]).stream().pipeThrough(stream)
+      new Response(data).body.pipeThrough(stream)
     );
     return new Uint8Array(await out2.arrayBuffer());
   }
@@ -45,7 +45,7 @@
   }
   async function inflateRaw(data, limit) {
     if (limit === void 0) return transform(data, new DecompressionStream("deflate-raw"));
-    const reader = new Blob([data]).stream().pipeThrough(new DecompressionStream("deflate-raw")).getReader();
+    const reader = new Response(data).body.pipeThrough(new DecompressionStream("deflate-raw")).getReader();
     const chunks = [];
     let n = 0;
     for (; ; ) {
@@ -1511,7 +1511,9 @@
 
   // src/virtualize/ir/wasm_browser.ts
   var url;
+  var given;
   async function compileIr() {
+    if (given !== void 0) return given;
     const at = url ?? new URL("refkv_ir.wasm", globalThis.location?.href);
     const response2 = await fetch(at);
     if (!response2.ok) throw new Error(`cannot fetch the IR core's wasm module ${String(at)}: HTTP ${response2.status}`);
@@ -2356,9 +2358,9 @@
       return r;
     };
   }
-  async function openHttpStore(url2, { fetch: given, policy = {}, headers = {}, maxObjects = MAX_OBJECTS, concurrency = CONCURRENCY } = {}) {
+  async function openHttpStore(url2, { fetch: given2, policy = {}, headers = {}, maxObjects = MAX_OBJECTS, concurrency = CONCURRENCY } = {}) {
     const allow = (u) => allowStoreUrl(policy, url2, u);
-    const send = given ?? storeFetch(url2, policy, headers);
+    const send = given2 ?? storeFetch(url2, policy, headers);
     const f = async (u, init) => {
       allow(u);
       const r = await send(u, init);
