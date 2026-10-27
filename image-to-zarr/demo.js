@@ -1,5 +1,5 @@
 // <define:__REFKV_PROFILES__>
-var define_REFKV_PROFILES_default = [{ name: "czi", title: "CZI", uuid: "7a0733c7-d4be-4482-a64f-6904d9354ea5", version: 0, kind: "file", sniff: 50, suffixes: [".czi"], reference: 20, source: "Zeiss CZI", inputs: "Zeiss CZI files (ZISRAW, file version 1), with uncompressed, JPEG, JPEG XR and Zstd subblocks, mosaics and pyramids", for: "Zeiss CZI files" }, { name: "dicom", title: "DICOM", uuid: "acf17198-e5a5-48d3-8187-22ec4bb40ea5", version: 0, kind: "file", sniff: 10, suffixes: [".dcm"], reference: 25, source: "DICOM", inputs: "DICOM Part 10 files with native or JPEG-encapsulated pixel data, including whole-slide images", for: "DICOM files, including whole-slide images" }, { name: "fits", title: "FITS", uuid: "4b0d3a7e-1c52-4f6a-9b8e-2d7f0c6a1e93", version: 0, kind: "file", sniff: 110, suffixes: [".fits", ".fz"], reference: null, source: "FITS", inputs: "FITS files: images, multi-extension files, binary and ASCII tables", for: "FITS images and tables (`.fits`, `.fz`)" }, { name: "ims", title: "IMS", uuid: "5067a535-8261-4b25-a93c-1985ed333bde", version: 0, kind: "file", sniff: 70, suffixes: [".ims"], reference: 25, source: "Imaris IMS", inputs: "Imaris IMS files (HDF5)", for: "Imaris `.ims` files" }, { name: "mp3", title: "MP3", uuid: "b6cb0047-9448-4fdc-b03e-10dd3d6aa829", version: 0, kind: "file", sniff: 100, suffixes: [".mp3"], reference: null, source: "MP3 (MPEG Layer III audio)", inputs: "MPEG-1, MPEG-2 and MPEG-2.5 Layer III audio files (`.mp3`), with their ID3v2, ID3v1 and APE tags; one array of samples, not an image", for: "MP3 audio files, as an array of samples (`.mp3`)" }, { name: "mp4", title: "MP4", uuid: "bbe3f6b9-488d-4d8d-85ce-60a1649dd27e", version: 0, kind: "file", sniff: 85, suffixes: [".mp4", ".mov"], reference: null, source: "MP4 and QuickTime (H.264 video, AAC and MP3 audio)", inputs: "MP4 and QuickTime files (`.mp4`, `.m4a`, `.mov`) with H.264 video and AAC or MP3 audio tracks; a group per track, not an image", for: "MP4 and QuickTime video and audio, as arrays of planes and samples (`.mp4`, `.mov`)" }, { name: "mrc", title: "MRC", uuid: "2aacd010-2ed1-4748-bc3c-5dd5e840bbce", version: 0, kind: "file", sniff: 90, suffixes: [".mrc"], reference: null, source: "MRC2014", inputs: "MRC2014 files (CCP4 maps, image stacks, volumes and volume stacks)", for: "MRC2014 maps, image stacks, volumes and volume stacks (`.mrc`, `.map`)" }, { name: "mrc-dataset", title: "MRC dataset", uuid: "f139bf4e-7bab-4c3c-9b2d-66ba747f9b93", version: 0, kind: "layout", sniff: null, suffixes: [], reference: null, source: "MRC2014, as a dataset", inputs: "", for: "" }, { name: "n5", title: "N5", uuid: "ad5d4c39-c69e-48f7-a3ef-4cc8c607d416", version: 0, kind: "store", sniff: null, suffixes: [], reference: 25, source: "N5", inputs: "N5 containers, default-mode blocks", for: "N5 containers on S3" }, { name: "nd2", title: "ND2", uuid: "59612f14-e314-4207-ba00-8f422ba71490", version: 0, kind: "file", sniff: 20, suffixes: [".nd2"], reference: 20, source: "Nikon ND2", inputs: "Nikon ND2, format version 3 and later", for: "Nikon NIS-Elements ND2 files" }, { name: "ndpi", title: "NDPI", uuid: "6cac71ef-dbb2-4acd-b60c-00389aa4238a", version: 0, kind: "file", sniff: null, suffixes: [".ndpi"], reference: 25, source: "Hamamatsu NDPI", inputs: "Hamamatsu NDPI slides, a TIFF variant with 64-bit offsets", for: "Hamamatsu NDPI whole-slide images" }, { name: "nifti", title: "NIfTI", uuid: "06e5809d-4d54-4b72-afd0-6bf61a7b4c85", version: 0, kind: "file", sniff: 60, suffixes: [".nii"], reference: 25, source: "NIfTI-1 and NIfTI-2", inputs: "NIfTI-1 and NIfTI-2 single files (`.nii`)", for: "NIfTI-1 and NIfTI-2 volumes (`.nii`)" }, { name: "ome-zarr", title: "OME-Zarr", uuid: "b74ea302-65bb-49ae-b81f-f9bb52cd4eed", version: 0, kind: "store", sniff: null, suffixes: [], reference: 25, source: "OME-Zarr 0.4", inputs: "OME-Zarr 0.4 hierarchies on Zarr v2, migrated to OME-Zarr 0.5", for: "OME-Zarr 0.4 hierarchies, migrated to OME-Zarr 0.5 in place" }, { name: "qptiff", title: "QPTIFF", uuid: "329ea136-2f55-4c27-b6f4-8e60ca2109b8", version: 0, kind: "file", sniff: null, suffixes: [".qptiff"], reference: null, source: "Akoya QPTIFF", inputs: "Akoya (PerkinElmer) Vectra QPTIFF slides and inForm component data, a TIFF with an XML description per image, in LZW, JPEG or uncompressed tiles or strips", for: "Akoya (PerkinElmer) Vectra multiplex scans and inForm component data" }, { name: "safe", title: "Sentinel-2 SAFE", uuid: "ef81346c-19e8-42ad-93b0-a279ccaf44c1", version: 0, kind: "both", sniff: 80, suffixes: [".zip"], reference: 25, source: "Sentinel-2 SAFE (Level-1C, Level-2A)", inputs: "Sentinel-2 Level-1C and Level-2A products: a `.SAFE` directory (a store) or a `.SAFE.zip` file", for: "Sentinel-2 Level-1C and Level-2A products, as a `.SAFE` directory or a `.SAFE.zip`" }, { name: "tiff", title: "TIFF", uuid: "48e9ac4e-1156-4a62-955e-20467d9c2700", version: 0, kind: "file", sniff: 40, suffixes: [".tif"], reference: 20, source: "TIFF, OME-TIFF, Aperio SVS", inputs: "TIFF and BigTIFF, including OME-TIFF and JPEG-tiled slides such as Aperio SVS", for: "OME-TIFF, plain tiled TIFF, and JPEG-tiled slides such as Aperio SVS" }, { name: "vsi", title: "VSI", uuid: "c0a1d4e6-5b7f-4f3a-9c2d-8e1f6a7b3c45", version: 0, kind: "file", sniff: 30, suffixes: [".vsi"], reference: null, source: "Olympus VSI", inputs: "Olympus cellSens VSI slides: a `.vsi` file and the tile files beside it, probed by key (uncompressed, JPEG and JPEG 2000 tiles)", for: "Olympus cellSens whole-slide images (`.vsi` with its tile files)" }, { name: "zarr2", title: "Zarr v2", uuid: "8e792619-d671-4687-ab51-752885dd3ee6", version: 0, kind: "store", sniff: null, suffixes: [], reference: 25, source: "Zarr v2", inputs: "Zarr v2 hierarchies", for: "Zarr v2 hierarchies on S3" }];
+var define_REFKV_PROFILES_default = [{ name: "czi", title: "CZI", uuid: "7a0733c7-d4be-4482-a64f-6904d9354ea5", version: 0, kind: "file", sniff: 50, chosen_by: null, suffixes: [".czi"], reference: 20, source: "Zeiss CZI", inputs: "Zeiss CZI files (ZISRAW, file version 1), with uncompressed, JPEG, JPEG XR and Zstd subblocks, mosaics and pyramids", for: "Zeiss CZI files" }, { name: "dicom", title: "DICOM", uuid: "acf17198-e5a5-48d3-8187-22ec4bb40ea5", version: 0, kind: "file", sniff: 10, chosen_by: null, suffixes: [".dcm"], reference: 25, source: "DICOM", inputs: "DICOM Part 10 files with native or JPEG-encapsulated pixel data, including whole-slide images", for: "DICOM files, including whole-slide images" }, { name: "fits", title: "FITS", uuid: "4b0d3a7e-1c52-4f6a-9b8e-2d7f0c6a1e93", version: 0, kind: "file", sniff: 110, chosen_by: null, suffixes: [".fits", ".fz"], reference: null, source: "FITS", inputs: "FITS files: images, multi-extension files, binary and ASCII tables", for: "FITS images and tables (`.fits`, `.fz`)" }, { name: "flac", title: "FLAC", uuid: "e9108d07-b24b-432f-a8ce-09d80c8073b4", version: 0, kind: "file", sniff: 95, chosen_by: null, suffixes: [".flac"], reference: null, source: "FLAC (Free Lossless Audio Codec)", inputs: "FLAC files (`.flac`) of a fixed block size, with their metadata blocks and ID3v2 and ID3v1 tags; one sharded array of integer samples, not an image", for: "FLAC audio files, as a sharded array of samples (`.flac`)" }, { name: "ims", title: "IMS", uuid: "5067a535-8261-4b25-a93c-1985ed333bde", version: 0, kind: "file", sniff: 70, chosen_by: null, suffixes: [".ims"], reference: 25, source: "Imaris IMS", inputs: "Imaris IMS files (HDF5)", for: "Imaris `.ims` files" }, { name: "lif", title: "LIF", uuid: "b099ab1f-f9d4-4276-9006-9ff1193a34b2", version: 0, kind: "file", sniff: 55, chosen_by: null, suffixes: [".lif"], reference: null, source: "Leica LIF", inputs: "Leica LIF files (LAS X and LAS AF, versions 1 and 2): every image of the file's element tree, with interleaved or planar channels, z-stacks, time series and mosaics, uncompressed", for: "Leica LIF files (`.lif`)" }, { name: "mp3", title: "MP3", uuid: "b6cb0047-9448-4fdc-b03e-10dd3d6aa829", version: 0, kind: "file", sniff: 100, chosen_by: null, suffixes: [".mp3"], reference: null, source: "MP3 (MPEG Layer III audio)", inputs: "MPEG-1, MPEG-2 and MPEG-2.5 Layer III audio files (`.mp3`), with their ID3v2, ID3v1 and APE tags; one array of samples, not an image", for: "MP3 audio files, as an array of samples (`.mp3`)" }, { name: "mp4", title: "MP4", uuid: "bbe3f6b9-488d-4d8d-85ce-60a1649dd27e", version: 0, kind: "file", sniff: 85, chosen_by: null, suffixes: [".mp4", ".mov"], reference: null, source: "MP4 and QuickTime (H.264 video, AAC and MP3 audio)", inputs: "MP4 and QuickTime files (`.mp4`, `.m4a`, `.mov`) with H.264 video and AAC or MP3 audio tracks; a group per track, not an image", for: "MP4 and QuickTime video and audio, as arrays of planes and samples (`.mp4`, `.mov`)" }, { name: "mrc", title: "MRC", uuid: "2aacd010-2ed1-4748-bc3c-5dd5e840bbce", version: 0, kind: "file", sniff: 90, chosen_by: null, suffixes: [".mrc"], reference: null, source: "MRC2014", inputs: "MRC2014 files (CCP4 maps, image stacks, volumes and volume stacks)", for: "MRC2014 maps, image stacks, volumes and volume stacks (`.mrc`, `.map`)" }, { name: "mrc-dataset", title: "MRC dataset", uuid: "f139bf4e-7bab-4c3c-9b2d-66ba747f9b93", version: 0, kind: "layout", sniff: null, chosen_by: null, suffixes: [], reference: null, source: "MRC2014, as a dataset", inputs: "", for: "" }, { name: "n5", title: "N5", uuid: "ad5d4c39-c69e-48f7-a3ef-4cc8c607d416", version: 0, kind: "store", sniff: null, chosen_by: null, suffixes: [], reference: 25, source: "N5", inputs: "N5 containers, default-mode blocks", for: "N5 containers on S3" }, { name: "nd2", title: "ND2", uuid: "59612f14-e314-4207-ba00-8f422ba71490", version: 0, kind: "file", sniff: 20, chosen_by: null, suffixes: [".nd2"], reference: 20, source: "Nikon ND2", inputs: "Nikon ND2, format version 3 and later", for: "Nikon NIS-Elements ND2 files" }, { name: "ndpi", title: "NDPI", uuid: "6cac71ef-dbb2-4acd-b60c-00389aa4238a", version: 0, kind: "file", sniff: null, chosen_by: "tiff", suffixes: [".ndpi"], reference: 25, source: "Hamamatsu NDPI", inputs: "Hamamatsu NDPI slides, a TIFF variant with 64-bit offsets", for: "Hamamatsu NDPI whole-slide images" }, { name: "nifti", title: "NIfTI", uuid: "06e5809d-4d54-4b72-afd0-6bf61a7b4c85", version: 0, kind: "file", sniff: 60, chosen_by: null, suffixes: [".nii"], reference: 25, source: "NIfTI-1 and NIfTI-2", inputs: "NIfTI-1 and NIfTI-2 single files (`.nii`)", for: "NIfTI-1 and NIfTI-2 volumes (`.nii`)" }, { name: "nrrd", title: "NRRD", uuid: "23e0c600-8da6-40f1-81e7-ab246e948e88", version: 0, kind: "file", sniff: 95, chosen_by: null, suffixes: [".nhdr", ".nrrd"], reference: null, source: "NRRD (Teem)", inputs: "NRRD files (`.nrrd`) and detached headers with one data file (`.nhdr`), raw or gzip-encoded", for: "NRRD volumes, attached or detached, raw or gzip (`.nrrd`, `.nhdr`)" }, { name: "ome-zarr", title: "OME-Zarr", uuid: "b74ea302-65bb-49ae-b81f-f9bb52cd4eed", version: 0, kind: "store", sniff: null, chosen_by: null, suffixes: [], reference: 25, source: "OME-Zarr 0.4", inputs: "OME-Zarr 0.4 hierarchies on Zarr v2, migrated to OME-Zarr 0.5", for: "OME-Zarr 0.4 hierarchies, migrated to OME-Zarr 0.5 in place" }, { name: "qptiff", title: "QPTIFF", uuid: "329ea136-2f55-4c27-b6f4-8e60ca2109b8", version: 0, kind: "file", sniff: null, chosen_by: "tiff", suffixes: [".qptiff"], reference: null, source: "Akoya QPTIFF", inputs: "Akoya (PerkinElmer) Vectra QPTIFF slides and inForm component data, a TIFF with an XML description per image, in LZW, JPEG or uncompressed tiles or strips", for: "Akoya (PerkinElmer) Vectra multiplex scans and inForm component data" }, { name: "safe", title: "Sentinel-2 SAFE", uuid: "ef81346c-19e8-42ad-93b0-a279ccaf44c1", version: 0, kind: "both", sniff: 80, chosen_by: null, suffixes: [".zip"], reference: 25, source: "Sentinel-2 SAFE (Level-1C, Level-2A)", inputs: "Sentinel-2 Level-1C and Level-2A products: a `.SAFE` directory (a store) or a `.SAFE.zip` file", for: "Sentinel-2 Level-1C and Level-2A products, as a `.SAFE` directory or a `.SAFE.zip`" }, { name: "tiff", title: "TIFF", uuid: "48e9ac4e-1156-4a62-955e-20467d9c2700", version: 0, kind: "file", sniff: 40, chosen_by: null, suffixes: [".tif"], reference: 20, source: "TIFF, OME-TIFF, Aperio SVS", inputs: "TIFF and BigTIFF, including OME-TIFF and JPEG-tiled slides such as Aperio SVS", for: "OME-TIFF, plain TIFF (tiled or in strips), and JPEG-tiled slides such as Aperio SVS" }, { name: "vsi", title: "VSI", uuid: "c0a1d4e6-5b7f-4f3a-9c2d-8e1f6a7b3c45", version: 0, kind: "file", sniff: 30, chosen_by: null, suffixes: [".vsi"], reference: null, source: "Olympus VSI", inputs: "Olympus cellSens VSI slides: a `.vsi` file and the tile files beside it, probed by key (uncompressed, JPEG and JPEG 2000 tiles)", for: "Olympus cellSens whole-slide images (`.vsi` with its tile files)" }, { name: "zarr2", title: "Zarr v2", uuid: "8e792619-d671-4687-ab51-752885dd3ee6", version: 0, kind: "store", sniff: null, chosen_by: null, suffixes: [], reference: 25, source: "Zarr v2", inputs: "Zarr v2 hierarchies", for: "Zarr v2 hierarchies on S3" }];
 
 // src/deflate.ts
 var CRC_TABLE = (() => {
@@ -240,6 +240,15 @@ function formatImfFixdate(seconds) {
 // src/http.ts
 var HttpResolutionError = class extends Error {
 };
+function inBrowser() {
+  const g = globalThis;
+  return g.document !== void 0 || g.WorkerGlobalScope !== void 0;
+}
+function fetchFailed(url, e, browser = inBrowser()) {
+  const message = `${url}: ${e.message}`;
+  if (!browser || !(e instanceof TypeError)) return message;
+  return `${message}. A browser reports this for a server that does not allow cross-origin reads (no Access-Control-Allow-Origin header for this page) as well as for one it cannot reach`;
+}
 function single(headers, name) {
   return headers.get(name);
 }
@@ -267,7 +276,7 @@ async function readHttpRange(url, start, end, pins, signal, options = {}) {
     response = options.fetch ? await options.fetch(url, { headers, signal }, options.allow) : await fetch(url, { headers, signal, redirect: "follow", cache: "no-store" });
   } catch (e) {
     signal?.throwIfAborted();
-    throw new HttpResolutionError(`${url}: ${e.message}`);
+    throw new HttpResolutionError(fetchFailed(url, e));
   }
   const fail = (message) => {
     throw new HttpResolutionError(`${url}: ${message}`);
@@ -1096,16 +1105,16 @@ function compareUtf8(a, b) {
   return x.length - y.length;
 }
 
-// src/virtualize/profiles_bundled.ts
+// src/zarrify/profiles_bundled.ts
 var REGISTRY = define_REFKV_PROFILES_default;
 
-// src/virtualize/profiles.ts
+// src/zarrify/profiles.ts
 var REGISTRY2 = REGISTRY;
 var FILE_FORMATS = new Set(
   REGISTRY2.filter((e) => e.kind === "file" || e.kind === "both").map((e) => e.name)
 );
 
-// src/virtualize/common.ts
+// src/zarrify/common.ts
 var PROFILES = Object.fromEntries(
   REGISTRY2.map((e) => [e.name, [e.uuid, e.version, e.title]])
 );
@@ -1116,21 +1125,21 @@ var SMALL_PADDING = 2 ** 10;
 var MAX_TOTAL_PADDING = 2 ** 20;
 var RAGGED_CHUNK = 2 ** 20;
 
-// src/virtualize/ir/run.ts
+// src/zarrify/ir/run.ts
 var utf83 = new TextEncoder();
 
-// src/virtualize/ir/source.ts
+// src/zarrify/ir/source.ts
 var OPEN = 1 << 16;
 var isNode = typeof process !== "undefined" && process.versions?.node !== void 0;
 
-// src/virtualize/store.ts
+// src/zarrify/store.ts
 var MAX_SAFE = Number.MAX_SAFE_INTEGER;
 var MAX_DOCUMENT = 1 << 24;
 var utf84 = new TextEncoder();
 var PREFETCH_BYTES = 64 << 20;
 var MAX_BLOCK = 2 ** 31 - 1;
 
-// src/virtualize/ir/store.ts
+// src/zarrify/ir/store.ts
 var utf85 = new TextEncoder();
 
 // src/server.ts
@@ -1283,7 +1292,7 @@ function usableWindow(w, dataType) {
 async function decodeChunk(meta, encoded) {
   const codecs = meta.codecs.filter((c) => c.name !== "transpose");
   const [first, ...rest] = codecs;
-  if (rest.some((c) => c.name !== "gzip" && c.name !== "zlib")) return void 0;
+  if (rest.some((c) => c.name !== "gzip" && c.name !== "numcodecs.zlib")) return void 0;
   let bytes = encoded;
   for (const c of [...rest].reverse()) {
     const inflate = new DecompressionStream(c.name === "gzip" ? "gzip" : "deflate");
@@ -1410,7 +1419,7 @@ function imageState(images, axes, scale, shape, dtype, omero = [], labels = []) 
     return {
       layers: images.map((img) => ({
         type: "image",
-        source: { url: `${img.url}|zarr3:`, transform: { outputDimensions } },
+        source: { url: img.url, transform: { outputDimensions } },
         name: many ? img.name : rgb ? "image" : "channels",
         opacity: 1,
         shader
@@ -1420,7 +1429,7 @@ function imageState(images, axes, scale, shape, dtype, omero = [], labels = []) 
     };
   }
   return {
-    layers: images.map((img) => ({ type: "image", source: `${img.url}|zarr3:`, name: many ? img.name : "image" })),
+    layers: images.map((img) => ({ type: "image", source: img.url, name: many ? img.name : "image" })),
     ...view
   };
 }
@@ -1430,7 +1439,7 @@ function neuroglancerState(...args) {
   const labels = args[6] ?? [];
   state.layers.push(...labels.map((l) => ({
     type: "segmentation",
-    source: `${l.url}|zarr3:`,
+    source: l.url,
     name: `labels ${l.name}`
   })));
   return state;
@@ -1577,6 +1586,12 @@ async function listArrays(zarrUrl) {
 }
 var prefix;
 var views = [];
+function neuroglancerSource(shown2, url) {
+  if (!shown2.isArchive) return `${url}|zarr3:`;
+  if (!url.startsWith(shown2.zarrUrl)) throw new Error(`${url} is not under ${shown2.zarrUrl}`);
+  const path = url.slice(shown2.zarrUrl.length).split("/").map(encodeURIComponent).join("/");
+  return `${shown2.url}|vzip:${path}|zarr3:`;
+}
 function showLevels(rows) {
   $("levels").replaceChildren(
     ...rows.map(({ path, meta: a }) => {
@@ -1599,8 +1614,11 @@ function showLevels(rows) {
 var shown;
 async function showView(view) {
   shown = view;
+  const source = (url) => neuroglancerSource(view.input, url);
+  $("share-local").hidden = view.input.isArchive;
+  $("share-archive").hidden = !view.input.isArchive;
   $("name").textContent = view.name;
-  $("zarr-url").textContent = view.url;
+  $("zarr-url").textContent = source(view.url);
   $("view-note").textContent = view.note ?? "";
   showLevels(view.levels);
   const level0 = view.levels[0].meta;
@@ -1622,13 +1640,13 @@ async function showView(view) {
     });
   }
   const state = neuroglancerState(
-    view.images,
+    view.images.map((img) => ({ ...img, url: source(img.url) })),
     view.axes,
     view.scale,
     level0.shape,
     dataType,
     omero,
-    view.labels
+    view.labels.map((l) => ({ ...l, url: source(l.url) }))
   );
   const plain = state.layers.filter((l) => l.type === "image" && !("shader" in l));
   if (plain.length > 0 && dataType !== "uint8") {
@@ -1648,7 +1666,7 @@ void main() {
   ng.hidden = false;
   ng.href = new URL(`neuroglancer/#!${encodeURIComponent(JSON.stringify(state))}`, location.href).href;
 }
-async function virtualize(url) {
+async function zarrify(url) {
   $("result").hidden = true;
   const here = new URL(location.href);
   here.searchParams.set("url", url);
@@ -1658,6 +1676,7 @@ async function virtualize(url) {
   const p = await prefix;
   const isArchive = /\.vzip(?:[?#]|$)/i.test(url);
   const zarrUrl = isArchive ? archiveZarrUrl(p, url) : imageZarrUrl(p, url);
+  const opened = { url, zarrUrl, isArchive };
   setStatus(isArchive ? "Opening the archive\u2026" : "Reading the file's structure\u2026");
   const t0 = performance.now();
   const root = await getJson(`${zarrUrl}zarr.json`);
@@ -1667,31 +1686,35 @@ async function virtualize(url) {
   const picker = $("view");
   map.hidden = true;
   $("view-row").hidden = true;
-  if (attrs.refkv_virtualized?.profile === "safe") {
-    const safe2 = attrs.refkv_virtualized.safe ?? {};
+  if (attrs.refkv_zarrified?.profile === "safe") {
+    const safe2 = attrs.refkv_zarrified.safe ?? {};
     views = [];
     $("name").textContent = `${safe2.PRODUCT_URI ?? url.split("/").pop()} (${safe2.PROCESSING_LEVEL ?? "Sentinel-2"})`;
-    $("zarr-url").textContent = zarrUrl;
+    $("zarr-url").textContent = neuroglancerSource(opened, zarrUrl);
     $("view-note").textContent = `${safe2.SENSING_TIME ?? ""} ${attrs["proj:code"] ?? ""}`;
     showLevels(await listArrays(zarrUrl));
     $("open-ng").hidden = true;
+    $("share-local").hidden = true;
+    $("share-archive").hidden = true;
     map.hidden = false;
     map.href = new URL(`map.html?url=${encodeURIComponent(url)}`, location.href).href;
   } else {
     const ms0 = attrs.ome?.multiscales?.[0];
+    let found;
     if (root.node_type === "array") {
-      views = [arrayView(zarrUrl, "", root)];
-    } else if (attrs.refkv_virtualized?.profile === "mp4") {
-      views = await videoViews(zarrUrl, attrs.refkv_virtualized.mp4 ?? {});
-      if (views.length === 0) throw new Error("no video track to show (audio is not displayed)");
+      found = [arrayView(zarrUrl, "", root)];
+    } else if (attrs.refkv_zarrified?.profile === "mp4") {
+      found = await videoViews(zarrUrl, attrs.refkv_zarrified.mp4 ?? {});
+      if (found.length === 0) throw new Error("no video track to show (audio is not displayed)");
     } else if (ms0 !== void 0) {
-      views = [await omeView(zarrUrl, ms0, ms0.name ?? "image", attrs.refkv_virtualized?.profile === "ome-zarr")];
+      found = [await omeView(zarrUrl, ms0, ms0.name ?? "image", attrs.refkv_zarrified?.profile === "ome-zarr")];
     } else if (attrs.ome?.["bioformats2raw.layout"] !== void 0) {
-      views = await seriesViews(zarrUrl);
+      found = await seriesViews(zarrUrl);
     } else {
-      views = (await listArrays(zarrUrl)).map(({ path, meta }) => arrayView(`${zarrUrl}${path}/`, path, meta));
-      if (views.length === 0) throw new Error("no arrays to show");
+      found = (await listArrays(zarrUrl)).map(({ path, meta }) => arrayView(`${zarrUrl}${path}/`, path, meta));
+      if (found.length === 0) throw new Error("no arrays to show");
     }
+    views = found.map((v) => ({ ...v, input: opened }));
     if (views.length > 1) {
       picker.replaceChildren(...views.map((v, i) => new Option(v.label, String(i))));
       $("view-row").hidden = false;
@@ -1707,7 +1730,7 @@ $("view").addEventListener("change", () => {
 });
 $("form").addEventListener("submit", (event) => {
   event.preventDefault();
-  virtualize(input.value.trim()).catch((e) => setStatus(String(e.message ?? e), true));
+  zarrify(input.value.trim()).catch((e) => setStatus(String(e.message ?? e), true));
 });
 for (const link of document.querySelectorAll("a[data-url]")) {
   link.addEventListener("click", (event) => {

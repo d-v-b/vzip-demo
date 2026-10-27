@@ -4,7 +4,7 @@ Live demos of [refkv](https://github.com/d-v-b/refkv), reference semantics for k
 
 | demo | what it does |
 |---|---|
-| [Image files to Zarr in the browser](https://d-v-b.github.io/vzip-demo/image-to-zarr/) | Paste the URL of a remote image file or store, such as an OME-TIFF, a Zeiss CZI, a DICOM, an N5 or a Sentinel-2 SAFE product: a service worker virtualizes it into a vzip archive in the browser and serves it as plain Zarr, opened here in Neuroglancer or on a map. |
+| [Image files to Zarr in the browser](https://d-v-b.github.io/vzip-demo/image-to-zarr/) | Paste the URL of a remote image file or store, such as an OME-TIFF, a Zeiss CZI, a DICOM, an N5 or a Sentinel-2 SAFE product: a service worker zarrifies it into a vzip archive in the browser and serves it as plain Zarr, opened here in Neuroglancer or on a map. Host the archive, and its Neuroglancer link opens anywhere. |
 
 This repository holds only the built sites, one directory per demo, published
 with GitHub Pages from the `gh-pages` branch. The source is in
