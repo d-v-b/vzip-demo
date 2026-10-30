@@ -3,30 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>refkv demos</title>
-<style>
-  :root { --bg: #fafaf8; --fg: #1d1d1b; --muted: #6b6b66; --line: #deddd8; --accent: #2d5bd7;
-    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
-  @media (prefers-color-scheme: dark) {
-    :root { --bg: #141413; --fg: #ecebe6; --muted: #9b9a94; --line: #34332f; --accent: #8aa8ff; }
-  }
-  body { background: var(--bg); color: var(--fg); margin: 0; line-height: 1.5; }
-  main { max-width: 760px; margin: 0 auto; padding: 32px 16px 64px; }
-  h1 { font-size: 1.6rem; margin: 0 0 4px; }
-  p { color: var(--muted); margin: 0 0 24px; }
-  ul { list-style: none; padding: 0; margin: 0; }
-  li { border-top: 1px solid var(--line); padding: 12px 0; }
-  a { color: var(--accent); font-weight: 600; text-decoration: none; }
-  span { display: block; color: var(--muted); font-size: 0.95rem; }
-</style>
+<title>refkv demos moved</title>
+<script>
+  // The demos moved from /vzip-demo/ to /refkv-demo/; tiff-to-zarr/ had
+  // become image-to-zarr/ before that. Keep the rest of the path, the query
+  // (e.g. ?url=...) and the fragment.
+  const rest = location.pathname.replace(/^\/vzip-demo\/?/, "").replace(/^tiff-to-zarr(\/|$)/, "image-to-zarr/");
+  location.replace("https://d-v-b.github.io/refkv-demo/" + rest + location.search + location.hash);
+</script>
+<noscript><meta http-equiv="refresh" content="0; url=https://d-v-b.github.io/refkv-demo/"></noscript>
 </head>
 <body>
-<main>
-  <h1>refkv demos</h1>
-  <p>Demos of <a href="https://github.com/d-v-b/refkv">refkv</a>, reference semantics for key-value storage.</p>
-  <ul>
-    <li><a href="image-to-zarr/">Image files to Zarr in the browser</a><span>Paste the URL of a remote image file or store, such as an OME-TIFF, a Zeiss CZI, a DICOM, an N5 or a Sentinel-2 SAFE product: a service worker zarrifies it into a vzip archive in the browser and serves it as plain Zarr, opened here in Neuroglancer or on a map. Host the archive, and its Neuroglancer link opens anywhere.</span></li>
-  </ul>
-</main>
+<p>The refkv demos moved to <a href="https://d-v-b.github.io/refkv-demo/">https://d-v-b.github.io/refkv-demo/</a>.</p>
 </body>
 </html>
